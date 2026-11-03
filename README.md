@@ -1,0 +1,199 @@
+# Co-Driver Nav
+
+A navigation app for the phone browser that gives every instruction as a rally co-driver pace note. Nothing to install: open the site over **HTTPS** (live on Cloudflare Pages), because phones only allow GPS and Wake Lock on secure pages.
+
+**Hosting:** Cloudflare Pages deploys this repository's `main` branch automatically, with no build step. The site is the repository root.
+
+## Files
+
+| File | What it does |
+|---|---|
+| `pacenotes.js` | Pace note generator (pure JS, also runs in Node) |
+| `navcore.js` | GPS-to-route matching, speed-aware call timing, drive simulator |
+| `app.js` | Leaflet map, search, route drawing, voice, live navigation screen, settings |
+| `sample-route.js` | Synthetic mountain stage with known corners, used for tests and the demo |
+
+## How notes are made
+
+1. The route line is resampled every 5 m. Heading is smoothed over about 8 m so the uneven node spacing in OpenStreetMap data doesn't create false corners. Curvature is the rate of heading change.
+2. Corners are stretches tighter than a 400 m radius. Stretches turning the same way less than 20 m apart are merged into one corner. Anything under 12° of total turn is ignored.
+3. **Grade** comes from an *effective* radius: the tightest radius plus how much a shallow bend can be straightened using the road width. That is why a short 20° kink is flat but a 90° bend with the same radius is a 3 or 4. The scale runs H (hairpin), 1, 2, 3, 4, 5, 6, from about 50 km/h for a 2 up to about 140 km/h for a 6.
+   **Square and acute come from the road shape too, not only from junction data.** A turn of 65–120° that is tight (grade 2 or tighter) or abrupt (over in 40 m or less) is called *square left/right*. A turn of 120–135° under the same conditions is *acute*. Street corners are therefore never called "left 2", and a very tight 90° is never called a hairpin, even when the routing service sends no turn instruction (drawn routes, the start/finish corner of a circuit, or a step that fails to match). An open 90° bend, say a 30 m radius on a country road, keeps its number (*right 3*).
+4. **Modifiers**:
+   - *tightens* / *opens*: the exit third of the corner is 1.5× tighter or looser than the entry third, and its grade changes.
+   - *long*: more than 135° of turn, or more than 150 m long with at least 90° of turn.
+   - *don't cut*: every hairpin, and grade-1 corners of 90° or more.
+   - *caution*: a grade 2 or tighter after 300 m or more of straight, or a corner that tightens to 2 or tighter.
+5. **Gentle bends** that are too open for a 6 are still called, up to a 700 m effective radius: *flat left* if the bend lasts, *kink right* if it is short. Settings → Gentle bends → Skip turns them off, which helps in town.
+6. **Junctions** come from OSRM's turn-by-turn steps. Each step is placed using OSRM's step lengths: the distance travelled so far gives the search area, ±150 m. That way two steps at the same spot, or a circuit's repeated laps, can't push later junctions onto the wrong lap.
+   The shape of the call comes from the route itself: the road heading 40 m before the junction compared with 40 m after it. OSRM's own bearings only look at the first few metres of each road, which is how a 35° bear right got called "square".
+
+   | Turn | Call |
+   |---|---|
+   | under 25° | at junction, keep right |
+   | 25–65° | at junction, right 5 (graded like a corner) |
+   | 65–120° | at junction, square right |
+   | 120–135° | at junction, acute right |
+   | over 135° | at junction, hairpin right |
+
+   "T junction", roundabouts, forks and slip roads are called as before. Any geometry corner at the same spot is dropped so it isn't called twice.
+7. **Links** between notes: *into* when the next corner is under 20 m away, *and* when it is under 50 m. Otherwise the call gives the distance: rounded to 50 below 175 m, rounded to 100 up to 1 km, then "1 k" / "2 k" / "long straight". Imperial mode uses yards, then "half mile" / "1 mile".
+
+## Vocabulary: what is called, and where it comes from
+
+| Source | Calls |
+|---|---|
+| Route geometry | left / right, 1–6, hairpin, flat, kink, square, *tightens 3*, *opens 5*, long, very long, short, late (apex), double apex, chicane left right, don't cut, brake / hard brake, caution / double caution (tightens into a 2 / 1 / hairpin) |
+| Gaps | into (< 20 m), and (< 45 m), then (< 75 m), 100 / 150 / 200 … |
+| Elevation (Open-Meteo, ~90 m terrain model) | crest, small crest, big crest, *over crest*, dip, and caution / double caution on a tight corner within 100 m after a crest (blind) |
+| OSRM | at junction …, T junction, roundabout + exit, fork / merge / slip road, tunnel |
+| **Recce** (you add them) | everything a map can't know: rocks, ditch, bank, wall, trees, drop, exposure, gravel, mud, ice, water, ford, ruts, bumps, jump, compression, narrows, widens, camber, off camber, bridge, gate, keep left / middle / right, cut, cut late, care, maybe, danger, inside / outside … |
+
+Corners are called by their entry grade with where they end up: "left 5, tightens 3" or "right 2, opens 4". Modifiers follow in the order co-drivers use: `right 5 over crest, long, tightens 3, don't cut`. Brake is judged from the speed you'd carry in without lifting (grip and acceleration limits, 100 km/h cap) against what the corner allows: a drop over 50 km/h means brake, over 80 km/h means hard brake.
+
+**Recce notes**: in Stage notes, tap any note to add words to it. While driving, the bar's ＋ Note button pins words to where you are now. Words are read in the order you tapped them and stay on the phone, so they come back on every route that passes within 25 m of that spot. A note on a corner joins that call ("right 3, rocks, outside"). One on a straight is called on its own.
+
+**Grade scale**: Settings lets you reverse it (1 = fastest) for crews that run it that way.
+
+## When calls are spoken
+
+Each call has to finish a set number of seconds before the corner: early 7 s, normal 5 s, late 3.5 s. The trigger distance is therefore `speed × (lead time + estimated speech time) + 15 m`, never less than 60 m and never more than 900 m. Driving faster makes calls come earlier.
+
+**One call at a time** (the default): each note is its own call, spoken just before that corner, with its link to the next ("left 4 into", "right 3, 200"). Nothing is ever queued behind a call that is still being spoken. The next call waits until the current one finishes, and it is dropped if its corner has already gone. Settings → Calls → Read ahead switches back to chaining close notes into one breath (up to 4).
+
+If you are more than about 35 m from the route (more if GPS accuracy is poor) for 3 GPS fixes in a row, the app says "Off route, recalculating" and asks OSRM for a new route from where you are to the waypoints you haven't reached yet.
+
+## Route summary and sharing
+
+- **Summary chip:** once a route exists, a chip at the top of the map shows the distance, the estimated time (OSRM's estimate, or about 50 km/h for drawn routes), the number of notes and the number of cameras.
+- **While driving:** the note panel shows the distance left and the ETA, or the distance to the line on a circuit.
+- **Name:** name a route by tapping the chip's ✎ Name this route, or with the name box in the Route sheet. The name shows on the chip, goes into the shared link and its message, and survives circuit toggling and rerouting.
+- **Street names:** junction calls add the road you turn onto, e.g. "at junction, square right, onto Boston Road" ("exit right, toward …" for exits), using OSRM's `name` / `ref` / `destinations`. Settings → Street names → Don't say gives clean pace notes only.
+- **Share:** Share (on the chip, or Share link in the Route sheet) puts the whole route into the link's `#hash`, using `share.js`. The link carries the route points (or the drawn line, or `demo`), the name, the circuit flag, and any recce notes within 25 m of the route. It uses the phone's share menu, or copies to the clipboard where that isn't available.
+- **Opening a shared link:** the same stage is rebuilt, and the sender's recce notes are added to the receiver's own.
+
+## My places
+
+Save the spots you go to:
+- **Route → 📍 My places → ＋ Save where I am** saves your current position.
+- **Long-press the map → 📍 Save place** saves that spot.
+- **📍** next to a search result saves that result.
+
+Each place gets a name and an icon, guessed from the name (🏠 Home, 💼 Work, 🍴 a restaurant, ☕, ⛽, 🏁 …). You can rename it or change the icon. Places appear on the map, and the first few show as quick chips at the top of the Route sheet.
+
+Tap a place to see:
+- **🏁 Go — best route**: routes from where you are now (GPS) to the place.
+- **✎ Plan my own way**: same route, then straight into edit mode to add the points in between.
+- **Saved routes to here**: every saved route that ends within 150 m of the place, so you can keep several ways to the same destination and pick one.
+
+## The route page
+
+Route (or ⚙ on the route chip) opens one page with everything about the current route:
+- name, distance and time
+- **route type**: ⚡ Fastest · 📏 Shortest · 〰️ Smooth · 🎲 Explore
+- **filters**: 💸 Avoid tolls · 🔁 No repeated roads (circuits) · 🧹 Skip loops & U-turns
+- **circuit**: lap circuit and number of laps
+- **drive**: save, edit points, share, stage notes, simulate, start, cancel
+
+Under that is **New route**: search, places, tap or draw on the map, My places, My routes, and the demo.
+
+## Round circuits (no repeated roads)
+
+A circuit with just a start and one point used to be an out-and-back on the same roads. With **🔁 No repeated roads** on (the default), the app:
+
+1. Tries 3 ways out (direct, plus detours left and right) and 5 ways back (direct, plus two detours on each side).
+2. Measures for every pair how much of the way back runs within 20 m of the way out (`sharedFraction`).
+3. Keeps pairs under 5 % shared (or under 12 % if none is that round), then picks by route type: fastest time, shortest distance, smoothest corners, or a random pair for Explore, which is different every tap.
+
+The final lap is routed in one go through the chosen detour points, and the page shows how round it came out ("no repeated roads" or "4 % repeated road"). If no round way exists (a dead-end valley, say), you get the least-repeated one and a message.
+
+## Route options (A → B and circuits)
+
+Under the route summary, a row of options picks how to get from A to B. Each one shows its distance and time once tried.
+
+| Option | How |
+|---|---|
+| ⚡ Fastest | OSRM's route (smoothest of its alternatives within +15 % time when Smooth routes is on) |
+| 📏 Shortest | OSRM alternatives, take the shortest distance (OSRM's public server has no true shortest-distance profile, so this is the shortest of the routes it offers) |
+| 〰️ Smooth | Candidates: OSRM's alternatives plus detours to either side (via points 15 % and 30 % left/right of the midpoint). Each is run through the pace-note generator and scored: tight corners (hairpin, 1, 2, square, acute) × 60 + medium corners (3–4) × 15 + time in seconds, allowing up to 60 % more time than the fastest. Lowest score wins, and the number of tight corners is shown. |
+| 🎲 Explore | One or two random points between A and B (to the side of the straight line), routed with loop/U-turn smoothing and kept under 2× the fastest distance. Tap again for another. |
+
+**💸 Avoid tolls is a filter, not a route type.** It sits at the start of the row and works with Fastest, Shortest, Smooth and Explore, including Smooth's detour candidates, Explore's random routes, edits and reroutes. It uses OSRM's `exclude=toll`. If the server can't do that, the app falls back to the alternatives with the fewest toll points and warns you if none is toll-free. It stays on for new routes until you switch it off.
+
+**Circuits and routes with your own points** use the same options, planned leg by leg (start → your point → … → back to the start). For each leg the app picks the shortest alternative, the smoothest candidate, or random detours (Explore). It pins that choice with a hidden point, then routes the whole thing in one request so the loop/U-turn smoothing still works across the joints. Your own points are kept and remembered, so you can switch type again, or tap Explore for another lap. The chosen option, and Explore's random points, go into saved routes and share links, so the same route comes back.
+
+## Shaping the way between A and B
+
+In edit mode the **start and destination are fixed** (🔒). You only shape the part in between:
+- Tap the map or the route to add a point. It goes between the two points where it fits best.
+- Drag a point to move it, or tap it to remove it.
+- **📍 From here** moves the start to where you are now.
+
+## Smooth routes (no pointless loops or U-turns)
+
+Every point you add is a must-pass point for OSRM, and OSRM won't U-turn at a waypoint (`continue_straight`). A point that lands on a side street, or on the far side of the road, therefore makes the route go past it, loop round the block and come back. With **Settings → Smooth routes** on (the default), `routing.js` handles this:
+
+1. It finds places where the route comes back to a street node it already passed (an around-the-block loop or an out-and-back spur), and any U-turns.
+2. If one of your added points sits in such a loop, it tries the route without that point. If that route still passes within 60 m of where you tapped, the point is skipped, because it was only causing the detour, and the app tells you. If the route really has to go there, the point is kept.
+3. For plain A→B routes it asks for alternatives and picks the smoothest one (fewest sharp turns, no U-turns) that is no more than 15 % slower.
+
+Loops OSRM makes for a real reason, such as a banned turn or a one-way street, are left alone, because every route still comes from OSRM.
+
+## My routes
+
+☆ on the route chip (or ☆ Save route in the Route sheet) saves the route on the phone. If it has no name yet, the app asks for one. ★ means it is saved; tapping it again after an edit updates the saved copy. Route → ★ My routes lists them with distance, laps and date. Tap one to open it, ✎ to rename, 🗑 to delete. Saved routes use the same compact format as share links, so they hold the points, name, circuit flag, lap count and nearby recce notes.
+
+## Note labels on the map
+
+The map shows each note as a coloured dot: yellow for corners, red for tight ones (2 or tighter, hairpins), blue for junctions. Labels are hidden by default to keep the map clean; tap a dot to see its note. Settings → Note labels on the map → Show all brings back every label.
+
+## Editing a route
+
+Tap ✎ on the route chip, or Edit route in the Route sheet. The route's points appear as markers: S (start), 1, 2, … and F (finish), or S/F on a circuit.
+
+- Drag a marker to move that point.
+- Tap the yellow route to insert a point at that spot. It goes in at the right place in the order.
+- Tap a marker to remove it (a route keeps at least two points).
+- Tap empty map to extend the route.
+
+After every change the route is re-snapped to the roads (OSRM) and the notes are regenerated. Undo steps back, Done keeps the changes, and Cancel puts the route back as it was. The route name and the circuit setting are kept.
+
+## Race mode
+
+Start gives a 3-2-1-GO countdown with beeps. The race clock (top right of the note panel) starts on GO. In simulation the car waits on the line until GO.
+
+- **Point to point:** the clock stops within 20 m of the finish.
+- **Circuit:** choose the laps in the Route sheet (− / +, or ∞ for no finish). The summary shows the total distance and time for that many laps, e.g. "3 laps = 16.2 km · ~21 min". Starting within 50 m of the line counts lap 1 from GO. Starting elsewhere gives an out lap first. Each lap time is spoken, then "Last lap!" and the finish.
+- **Results card:** shows the route name, a drawing of the route, the time, personal best (kept on the phone per route and lap count), average and top speed, distance driven, and for circuits the laps, best lap and lap length, plus each lap time. **Share result** sends the time with a link so friends can race the same stage. **Race again** restarts it.
+
+The race logic lives in `race.js` and is unit-tested.
+
+## Speed cameras (optional, off by default)
+
+Turn on under Settings → Speed cameras. The app asks OpenStreetMap (Overpass API) for `highway=speed_camera` nodes in the route's area, keeps those within 40 m of the route, and calls them like any note: "speed camera, limit 50". A camera inside a corner is added to that corner's call. Cameras appear on the map as 📷.
+
+The data comes from volunteers, so cameras can be missing or out of date. Mobile cameras are never included. Camera warnings are illegal in some countries (for example France, Germany and Switzerland).
+
+## Circuits (laps)
+
+To make a circuit, tick **Lap circuit** in the Route sheet, or switch the draw bar from **→ One way** to **⟳ Circuit** before you snap the route. The route is then closed back to its start, and the start/finish line becomes the start of each lap.
+
+- **Notes across the start line:** the generator analyses three laps back to back and keeps the middle one. Corners that straddle the start line are measured properly, and the last note of the lap links into the first one.
+- **Calls:** the scheduler treats a circuit as a sequence that never ends, so calls keep coming lap after lap.
+- **Lap times:** the screen shows the lap number, the current lap time, the last lap and the best lap. Each lap time is spoken, and a new best is called out as "best lap".
+- **Going off the circuit:** the app does not reroute. It says "Off route" once and picks the calls up again when you rejoin.
+
+**Cancel route**, in the Route sheet, stops navigation and clears the route.
+
+## Try it without driving
+
+Tap Route → Load demo stage → Start. The Simulate option drives the stage at a capped speed. It slows for corners and speaks the calls.
+
+## Dev
+
+```
+npm run notes     # print notes and simulated call timing for the demo stage
+npm test
+```
+
+The public OSRM and Nominatim servers are demo services with fair-use limits. For real traffic, host your own instances or use a paid provider.

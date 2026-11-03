@@ -1,0 +1,10 @@
+{
+  "name": "gps-rally-co",
+  "private": true,
+  "description": "Co-Driver Nav \u2014 rally pace-note navigation in the phone browser",
+  "scripts": {
+    "test": "node --test tests/rally.test.mjs",
+    "notes": "node scripts/rally-notes.mjs"
+  },
+  "type": "module"
+}

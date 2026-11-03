@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Co-Driver Nav</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="mapwrap"><div id="map"></div></div>
+
+<!-- pace note panel: big arrow, then the call in big letters, details below -->
+<section id="notepanel" hidden>
+  <svg id="glyph" viewBox="0 0 100 100"></svg>
+  <div id="noteBig">—</div>
+  <div id="noteDist"></div>
+  <div id="noteSub"></div>
+  <div id="noteNext"></div>
+  <div id="lastCall"></div>
+  <div class="np-stats">
+    <div id="raceClock">0:00.0</div>
+    <div id="lapInfo" hidden></div>
+    <div id="remain"></div>
+  </div>
+</section>
+
+<div id="toast" hidden></div>
+
+<!-- route summary -->
+<div id="routeChip" hidden>
+  <div class="chip-txt"><button id="chipName" class="unnamed"></button><b id="chipDist"></b><small id="chipMeta"></small></div>
+  <button id="chipSave" class="pill ghost" title="Save route">☆</button>
+  <button id="chipEdit" class="pill ghost" title="Edit route">✎</button>
+  <button id="chipShare" class="pill ghost">Share</button>
+  <button id="chipOpts" class="pill ghost" title="Route settings">⚙</button>
+</div>
+
+<!-- bottom bar -->
+<nav id="bar">
+  <div id="speedBox"><span id="speed">0</span><small id="speedUnit">km/h</small></div>
+  <button id="btnRoute" class="pill">Route</button>
+  <button id="btnGo" class="pill go" disabled>Start</button>
+  <button id="btnCompass" class="round" title="Heading up / north up">N</button>
+  <button id="btnSettings" class="round" title="Settings">⚙</button>
+</nav>
+<div id="attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · OSRM</div>
+
+<!-- route sheet: everything about this route on one page, then "new route" -->
+<section id="routeSheet" class="sheet tall" hidden>
+  <header><h2>Route</h2><button class="close" data-close>✕</button></header>
+  <div id="thisRoute" hidden>
+    <input id="routeName" type="text" maxlength="80" placeholder="Name this route (optional)" autocomplete="off" hidden>
+    <div id="routeInfo"></div>
+    <h3 class="sub" id="typeHead">Route type</h3>
+    <div id="modeRow" class="mode-row wrap" hidden></div>
+    <h3 class="sub" id="filterHead">Filters</h3>
+    <div id="filterRow" class="mode-row wrap" hidden></div>
+    <h3 class="sub">Circuit</h3>
+    <label class="toggle"><input type="checkbox" id="loopToggle"> Lap circuit — back to the start and keep lapping</label>
+    <div id="lapsRow" class="laps" hidden>
+      <span>Laps</span><button id="lapsMinus" class="round">−</button><b id="lapsVal">3</b><button id="lapsPlus" class="round">+</button>
+      <small id="lapsInfo"></small>
+    </div>
+    <h3 class="sub">Drive</h3>
+    <div class="row" id="routeActions" hidden>
+      <button id="btnSave" class="pill ghost">☆ Save route</button>
+      <button id="btnEdit" class="pill ghost">✎ Edit points</button>
+      <button id="btnShare" class="pill ghost">Share link</button>
+      <button id="btnNotes" class="pill ghost">Stage notes</button>
+    </div>
+    <div class="row"><label class="sim">Simulate
+      <select id="simSpeed"><option value="0">off</option><option value="60">60</option><option value="90">90</option><option value="120">120</option></select>
+    </label></div>
+    <div class="row"><button id="btnStart2" class="pill go" hidden>Start</button></div>
+    <div class="row"><button id="btnCancel" class="pill danger" hidden>Cancel route</button></div>
+    <h3 class="sub new-head">New route</h3>
+  </div>
+  <div id="placeChips" class="chips place-chips" hidden></div>
+  <form id="searchForm">
+    <input id="searchInput" type="search" placeholder="Search destination" autocomplete="off">
+    <button class="pill">Find</button>
+  </form>
+  <ul id="results"></ul>
+  <div class="row">
+    <button id="btnPick" class="pill ghost">Tap map for destination</button>
+    <button id="btnDraw" class="pill ghost">Draw route</button>
+  </div>
+  <div class="row"><button id="btnPlaces" class="pill ghost">📍 My places</button><button id="btnMyRoutes" class="pill ghost">★ My routes</button></div>
+  <div class="row"><button id="btnDemo" class="pill ghost">Load demo stage</button></div>
+  <p class="fine">Pace notes are generated from map geometry and can be wrong. Keep your eyes on the road and drive to the conditions and the law.</p>
+</section>
+
+<!-- draw toolbar -->
+<div id="drawBar" hidden>
+  <span>Tap to add points</span>
+  <button id="drawLoop" class="pill ghost">→ One way</button>
+  <button id="drawUndo" class="pill ghost">Undo</button>
+  <button id="drawSnap" class="pill">Snap to roads</button>
+  <button id="drawRaw" class="pill ghost">Use as drawn</button>
+  <button id="drawCancel" class="pill ghost">✕</button>
+</div>
+
+<!-- edit toolbar -->
+<div id="editBar" hidden>
+  <span>Start and destination stay fixed · tap the map or the route to add a point in between · drag a point to move it · tap it to remove</span>
+  <button id="editHere" class="pill ghost">📍 From here</button>
+  <button id="editUndo" class="pill ghost">Undo</button>
+  <button id="editDone" class="pill">Done</button>
+  <button id="editCancel" class="pill ghost">Cancel</button>
+</div>
+
+<!-- countdown -->
+<div id="countdown" hidden><span id="cdNum">3</span></div>
+
+<!-- results -->
+<section id="resultSheet" class="sheet tall" hidden>
+  <header><h2>🏁 Stage complete</h2><button class="close" data-close>✕</button></header>
+  <div id="resName"></div>
+  <svg id="resMap" viewBox="0 0 300 170"></svg>
+  <div id="resTime"></div>
+  <div id="resPb"></div>
+  <div id="resGrid" class="res-grid"></div>
+  <ol id="resLaps"></ol>
+  <div class="row"><button id="resShare" class="pill go">Share result</button><button id="resAgain" class="pill ghost">Race again</button></div>
+</section>
+
+<!-- settings sheet -->
+<section id="settingsSheet" class="sheet" hidden>
+  <header><h2>Settings</h2><button class="close" data-close>✕</button></header>
+  <label>Call-ahead</label>
+  <div class="seg" id="setAhead">
+    <button data-v="early">Early</button><button data-v="normal">Normal</button><button data-v="late">Late</button>
+  </div>
+  <label>Calls</label>
+  <div class="seg" id="setChain">
+    <button data-v="single">One at a time</button><button data-v="ahead">Read ahead</button>
+  </div>
+  <label>Voice speed <span id="rateVal"></span></label>
+  <input id="setRate" type="range" min="0.8" max="2" step="0.05">
+  <label>Distances</label>
+  <div class="seg" id="setUnits">
+    <button data-v="metric">Metric</button><button data-v="imperial">Imperial</button>
+  </div>
+  <label>Grade scale</label>
+  <div class="seg" id="setScale">
+    <button data-v="wrc">1 slowest → 6 fastest</button><button data-v="rev">1 fastest → 6 slowest</button>
+  </div>
+  <label>Gentle bends (flat / kink)</label>
+  <div class="seg" id="setFlats">
+    <button data-v="on">Call them</button><button data-v="off">Skip</button>
+  </div>
+  <label>Note labels on the map</label>
+  <div class="seg" id="setLabels">
+    <button data-v="off">Hide (tap a dot)</button><button data-v="on">Show all</button>
+  </div>
+  <label>Street names at junctions</label>
+  <div class="seg" id="setStreets">
+    <button data-v="on">Say them</button><button data-v="off">Don't say</button>
+  </div>
+  <label>Speed cameras</label>
+  <div class="seg" id="setCams">
+    <button data-v="off">Off</button><button data-v="on">Call them</button>
+  </div>
+  <p class="fine">Camera locations come from OpenStreetMap volunteers and may be missing or out of date. Camera warnings are illegal in some countries (for example France, Germany and Switzerland), so check your local law.</p>
+  <label>Voice</label>
+  <select id="setVoice"></select>
+  <div class="row"><button id="btnTestVoice" class="pill ghost">Test voice</button></div>
+</section>
+
+<!-- recce picker -->
+<section id="recceSheet" class="sheet tall" hidden>
+  <header><h2>Recce note</h2><button class="close" data-close>✕</button></header>
+  <p id="recceWhat" class="fine"></p>
+  <div id="reccePreview"></div>
+  <div id="recceChips"></div>
+  <div class="row">
+    <button id="recceSave" class="pill go">Save</button>
+    <button id="recceClear" class="pill danger" hidden>Remove recce here</button>
+  </div>
+</section>
+
+<!-- my places -->
+<section id="placesSheet" class="sheet tall" hidden>
+  <header><h2>📍 My places</h2><button class="close" data-close>✕</button></header>
+  <div class="row"><button id="btnSaveHere" class="pill go">＋ Save where I am</button></div>
+  <ul id="placesList" class="mr-list"></ul>
+  <p class="fine">Tip: long-press anywhere on the map, or tap 📍 next to a search result, to save that spot.</p>
+</section>
+
+<!-- one place -->
+<section id="placeSheet" class="sheet tall" hidden>
+  <header><h2 id="plTitle"></h2><button class="close" data-close>✕</button></header>
+  <p id="plWhere" class="fine"></p>
+  <div class="row"><button id="plGo" class="pill go">🏁 Go — best route</button></div>
+  <div class="row"><button id="plPlan" class="pill ghost">✎ Plan my own way (add points)</button></div>
+  <h3 class="sub">Saved routes to here</h3>
+  <ul id="plRoutes" class="mr-list"></ul>
+  <div class="row"><button id="plRename" class="pill ghost">Rename</button><button id="plIcon" class="pill ghost">Change icon</button><button id="plDelete" class="pill danger">Delete</button></div>
+</section>
+
+<!-- my routes -->
+<section id="myRoutesSheet" class="sheet tall" hidden>
+  <header><h2>★ My routes</h2><button class="close" data-close>✕</button></header>
+  <ul id="myRoutesList"></ul>
+  <p class="fine">Saved on this phone (in this browser). Use Share to keep a copy elsewhere or send it to a friend.</p>
+</section>
+
+<!-- notes list -->
+<section id="notesSheet" class="sheet tall" hidden>
+  <header><h2>Stage notes</h2><button class="close" data-close>✕</button></header>
+  <ol id="notesList"></ol>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
