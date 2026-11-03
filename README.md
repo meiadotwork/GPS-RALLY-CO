@@ -174,6 +174,15 @@ Your best run is recorded as a trace of (time, distance), roughly every 5 m or e
 
 On a circuit, your best lap chases you from the next lap of the same race. A ghost is only replaced by a faster one. Ghosts are stored per route (`codriver.ghosts`).
 
+## Saving and backup
+
+Places, routes, recce notes, fixes, ghosts and best times are stored in the browser (`localStorage`). That storage belongs to the site address, is wiped when a **Private** tab closes, and is refused under Safari's **Block All Cookies**.
+
+- At start the app checks that saving works. If it doesn't, a red banner says why, and every failed save says so instead of failing silently.
+- Where supported, it asks the browser to keep the data permanently (`navigator.storage.persist()`).
+- Names are typed in an in-app box, not the browser's `prompt()`, which some Home Screen apps and in-app browsers block.
+- **Settings → Backup → Export** saves everything to `codriver-backup-YYYY-MM-DD.json` (on iPhone via the share sheet: Save to Files, AirDrop…). **Import** merges a backup back in: places, routes, notes and fixes by id, and ghosts and best times keeping the faster one. Use it to restore, or to move to another phone.
+
 ## Your position
 
 Your position is always on the map, not only while driving. It shows a blue dot with a GPS-accuracy circle when you're standing still, and an arrow when you're moving. **◎** centres the map on you. While driving, that button switches between heading-up and north-up as before.

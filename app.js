@@ -1029,8 +1029,8 @@ function setRouteName(v) {
   paintSummary();
 }
 $('routeName').addEventListener('input', (e) => setRouteName(e.target.value));
-$('chipName').onclick = () => {
-  const v = prompt('Route name', S.route?.spec?.name || '');
+$('chipName').onclick = async () => {
+  const v = await askText('Route name', S.route?.spec?.name || '', 'e.g. Sunday mountain loop');
   if (v != null) setRouteName(v);
 };
 
@@ -1183,13 +1183,13 @@ $('chipEdit').onclick = startEdit;
 
 // ---------- my routes (saved on this phone) ----------
 function myRoutes() { try { return JSON.parse(localStorage.getItem('codriver.routes') || '[]'); } catch { return []; } }
-function putRoutes(list) { try { localStorage.setItem('codriver.routes', JSON.stringify(list)); return true; } catch { toast('Could not save — storage full?'); return false; } }
-function saveRoute() {
+function putRoutes(list) { try { localStorage.setItem('codriver.routes', JSON.stringify(list)); return true; } catch { toast('Not saved — this browser is blocking saved data (Private tab or “Block All Cookies”). Use a normal tab, or Export a backup.', 6000); return false; } }
+async function saveRoute() {
   const R = S.route; if (!R?.spec) return;
   let name = R.spec.name;
   if (!name) {
     const d = new Date();
-    name = prompt('Name this route', `Route ${d.getDate()}/${d.getMonth() + 1} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`);
+    name = await askText('Name this route', `Route ${d.getDate()}/${d.getMonth() + 1} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`);
     if (name == null) return;
     name = name.trim().slice(0, 80) || 'Untitled route';
     R.spec.name = name;
@@ -1225,7 +1225,7 @@ $('myRoutesList').addEventListener('click', async (e) => {
     putRoutes(list.filter((x) => x.id !== r.id)); renderMyRoutes(); if (S.route) paintSummary(); return;
   }
   if (e.target.closest('.mr-ren')) {
-    const v = prompt('Rename route', r.name); if (v == null || !v.trim()) return;
+    const v = await askText('Rename route', r.name); if (v == null || !v.trim()) return;
     const q = hashToSpec(r.hash); r.name = v.trim().slice(0, 80);
     r.hash = specToHash(q.spec.demo ? { demo: true } : q.spec, { loop: q.loop, name: r.name, recce: q.recce });
     putRoutes(list); renderMyRoutes();
@@ -1255,12 +1255,16 @@ function guessIcon(name) {
   return '⭐';
 }
 function myPlaces() { try { return JSON.parse(localStorage.getItem('codriver.places') || '[]'); } catch { return []; } }
-function putPlaces(list) { try { localStorage.setItem('codriver.places', JSON.stringify(list)); } catch { toast('Could not save — storage full?'); } drawPlaces(); paintPlaceChips(); }
-function addPlace(lat, lon, suggested = '') {
-  const name = prompt('Name this place (e.g. Home, Work, Joe’s Pizza)', suggested);
+function putPlaces(list) {
+  let ok = true;
+  try { localStorage.setItem('codriver.places', JSON.stringify(list)); } catch { ok = false; toast('Not saved — this browser is blocking saved data (Private tab or “Block All Cookies”). Use a normal tab, or Export a backup.', 6000); }
+  drawPlaces(); paintPlaceChips(); return ok;
+}
+async function addPlace(lat, lon, suggested = '') {
+  const name = await askText('Name this place', suggested, 'Home, Work, Joe’s Pizza…');
   if (name == null || !name.trim()) return;
   const p = { id: Date.now().toString(36), name: name.trim().slice(0, 60), icon: guessIcon(name), lat, lon };
-  putPlaces([p, ...myPlaces()]);
+  if (!putPlaces([p, ...myPlaces()])) return;
   toast(`${p.icon} “${p.name}” saved to My places`);
   return p;
 }
@@ -1285,7 +1289,7 @@ function renderPlaces() {
 }
 $('placesList').addEventListener('click', (e) => { const id = e.target.closest('li[data-id]')?.dataset.id; if (id) openPlace(id); });
 $('btnPlaces').onclick = () => { renderPlaces(); openSheet('placesSheet'); };
-$('btnSaveHere').onclick = async () => { const [la, lo] = await currentPos(); addPlace(la, lo); renderPlaces(); };
+$('btnSaveHere').onclick = async () => { const [la, lo] = await currentPos(); await addPlace(la, lo); renderPlaces(); openSheet('placesSheet'); };
 
 // One place: go now, open a saved route to it, or plan your own way there.
 let curPlace = null;
@@ -1321,8 +1325,8 @@ $('plRoutes').addEventListener('click', async (e) => {
   $('placeSheet').hidden = true;
   try { await openRouteHash(r.hash, { savedId: r.id, laps: r.laps }); } catch (err) { toast('Could not open: ' + err.message); }
 });
-$('plRename').onclick = () => {
-  const v = prompt('Rename place', curPlace.name); if (v == null || !v.trim()) return;
+$('plRename').onclick = async () => {
+  const v = await askText('Rename place', curPlace.name); if (v == null || !v.trim()) return;
   const list = myPlaces(), p = list.find((x) => x.id === curPlace.id);
   p.name = v.trim().slice(0, 60); putPlaces(list); openPlace(p.id);
 };
@@ -1497,3 +1501,72 @@ function paintCal() {
 bindSeg('setCal', 'cal');
 $('setCal').addEventListener('click', () => regen(settings.cal === '-1' ? 'Calls one grade tighter' : settings.cal === '1' ? 'Calls one grade faster' : 'Calls as measured'));
 paintCal();
+
+// ---------- ask for a name (in-app, works in Home Screen apps where prompt() may not) ----------
+function askText(title, value = '', placeholder = '') {
+  return new Promise((resolve) => {
+    $('askTitle').textContent = title;
+    const inp = $('askInput'); inp.value = value; inp.placeholder = placeholder;
+    const prev = [...document.querySelectorAll('.sheet')].find((x) => !x.hidden);
+    openSheet('askSheet');
+    setTimeout(() => { inp.focus(); inp.select(); }, 50);
+    const done = (v) => {
+      $('askSheet').hidden = true; $('askForm').onsubmit = null; $('askCancel').onclick = null;
+      if (prev && prev.id !== 'askSheet' && v == null) prev.hidden = false; // cancelled: go back where you were
+      resolve(v);
+    };
+    $('askForm').onsubmit = (e) => { e.preventDefault(); done(inp.value.trim() || null); };
+    $('askCancel').onclick = () => done(null);
+  });
+}
+
+// ---------- is this browser keeping our data? ----------
+(function checkStorage() {
+  let ok = true;
+  try { localStorage.setItem('codriver.__t', '1'); ok = localStorage.getItem('codriver.__t') === '1'; localStorage.removeItem('codriver.__t'); } catch { ok = false; }
+  if (!ok) { $('storeWarn').hidden = false; return; }
+  navigator.storage?.persist?.().catch(() => {}); // ask the browser not to clear us when space is low
+})();
+$('storeWarn').onclick = () => { $('storeWarn').hidden = true; };
+
+// ---------- backup: everything you've saved, to a file and back ----------
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.settings'];
+async function exportBackup() {
+  const data = { app: 'codriver', version: 1, exported: new Date().toISOString() };
+  for (const k of BACKUP_KEYS) { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch { data[k] = null; } }
+  const n = (data['codriver.places'] || []).length, r = (data['codriver.routes'] || []).length;
+  const name = `codriver-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  try { // iPhone: share sheet → Save to Files / AirDrop / Messages
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Co-Driver backup' }); toast(`Backup ready: ${plural(n, 'place')}, ${plural(r, 'route')}`); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`Backup saved: ${plural(n, 'place')}, ${plural(r, 'route')}`);
+}
+function mergeById(cur, add) { const ids = new Set(cur.map((x) => x.id)); return [...cur, ...(add || []).filter((x) => x && !ids.has(x.id))]; }
+function mergeFaster(cur, add, ms = (v) => v) { const out = { ...cur }; for (const [k, v] of Object.entries(add || {})) if (out[k] == null || ms(v) < ms(out[k])) out[k] = v; return out; }
+async function importBackup(file) {
+  let data; try { data = JSON.parse(await file.text()); } catch { return toast('That file isn’t a Co-Driver backup'); }
+  if (data?.app !== 'codriver') return toast('That file isn’t a Co-Driver backup');
+  const get = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch { return d; } };
+  const before = myPlaces().length + myRoutes().length;
+  const write = {
+    'codriver.places': mergeById(get('codriver.places', []), data['codriver.places']),
+    'codriver.routes': mergeById(get('codriver.routes', []), data['codriver.routes']),
+    'codriver.recce': mergeById(get('codriver.recce', []), data['codriver.recce']),
+    'codriver.fixes': mergeById(get('codriver.fixes', []), data['codriver.fixes']),
+    'codriver.ghosts': mergeFaster(get('codriver.ghosts', {}), data['codriver.ghosts'], (g) => g.ms),
+    'codriver.pb': mergeFaster(get('codriver.pb', {}), data['codriver.pb']),
+  };
+  try { for (const [k, v] of Object.entries(write)) localStorage.setItem(k, JSON.stringify(v)); }
+  catch { return toast('Couldn’t import — this browser is blocking saved data (Private tab?)', 6000); }
+  recce = write['codriver.recce']; fixes = write['codriver.fixes'];
+  drawPlaces(); paintPlaceChips(); paintCal(); if (S.route) regen();
+  const added = myPlaces().length + myRoutes().length - before;
+  toast(`Backup imported: ${plural(write['codriver.places'].length, 'place')}, ${plural(write['codriver.routes'].length, 'route')} (${added} new)`);
+}
+$('btnExport').onclick = exportBackup;
+$('btnImport').onclick = () => $('importFile').click();
+$('importFile').onchange = (e) => { const f = e.target.files?.[0]; if (f) importBackup(f); e.target.value = ''; };

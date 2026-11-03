@@ -30,6 +30,7 @@
 </section>
 
 <div id="toast" hidden></div>
+<div id="storeWarn" hidden>⚠ This browser isn’t keeping saved data (Private tab or “Block All Cookies”). Places and routes won’t be kept — open the app in a normal tab, or use Settings → Export backup. <b>✕</b></div>
 
 <!-- route summary -->
 <div id="routeChip" hidden>
@@ -175,6 +176,19 @@
   <label>Voice</label>
   <select id="setVoice"></select>
   <div class="row"><button id="btnTestVoice" class="pill ghost">Test voice</button></div>
+  <label>Backup</label>
+  <p class="fine" style="margin-top:0">Your places, routes, recce notes, fixes, ghosts and best times live in this browser. Save a backup file to keep them safe or move them to another phone.</p>
+  <div class="row"><button id="btnExport" class="pill ghost">⬇ Export backup</button><button id="btnImport" class="pill ghost">⬆ Import backup</button></div>
+  <input id="importFile" type="file" accept=".json,application/json" hidden>
+</section>
+
+<!-- ask for a name -->
+<section id="askSheet" class="sheet" hidden>
+  <header><h2 id="askTitle">Name</h2></header>
+  <form id="askForm">
+    <input id="askInput" type="text" maxlength="80" autocomplete="off">
+    <div class="row"><button type="button" id="askCancel" class="pill ghost">Cancel</button><button type="submit" class="pill go">Save</button></div>
+  </form>
 </section>
 
 <!-- fix a call -->
