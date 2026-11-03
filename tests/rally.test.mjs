@@ -359,3 +359,60 @@ test('your fixes change future calls; calibration shifts the rest', () => {
   assert.equal(tighter.notes[0].label, 'right 5');                        // right 6 → 5
   assert.ok(tighter.notes.some((n) => n.label === 'hairpin right, don\'t cut')); // hairpins untouched
 });
+
+import { buildGraph, planHunt, overpassQuery } from '../parking.js';
+// a fake city: N×N grid of streets 100 m apart, every other street one-way (like OSM)
+function cityGrid(n = 9, spacing = 100, c0 = [40.8, -73.9]) {
+  const els = [], id = (r, c) => r * 1000 + c + 1;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const p = offsetPoint(offsetPoint(c0, 0, (r - (n - 1) / 2) * spacing), 90, (c - (n - 1) / 2) * spacing);
+    els.push({ type: 'node', id: id(r, c), lat: p[0], lon: p[1] });
+  }
+  let wid = 1;
+  for (let r = 0; r < n; r++) els.push({ type: 'way', id: wid++, nodes: [...Array(n)].map((_, c) => id(r, c)), tags: { highway: 'residential', name: `${r} Street`, ...(r % 2 ? { oneway: 'yes' } : {}) } });
+  for (let c = 0; c < n; c++) els.push({ type: 'way', id: wid++, nodes: [...Array(n)].map((_, r) => id(r, c)), tags: { highway: 'residential', name: `${c} Avenue`, ...(c % 2 ? { oneway: '-1' } : {}) } });
+  return { osm: { elements: els }, center: c0 };
+}
+
+test('parking hunt covers every street in the radius, closest first, obeying one-ways', () => {
+  const { osm, center } = cityGrid();
+  for (const radius of [150, 300, 1000]) {
+    const g = buildGraph(osm, center, radius);
+    const h = planHunt(g, center, { maxLength: 1e9 });
+    assert.equal(h.covered + h.unreachable, h.total, `r=${radius}`);
+    assert.equal(h.unreachable, 0, `r=${radius}: one-way trap`);
+    assert.ok(h.total > 0);
+    // every step is a real street edge, driven in an allowed direction
+    for (let i = 1; i < h.nodeIds.length; i++) {
+      const ok = (g.adj.get(h.nodeIds[i - 1]) || []).some((e) => e.to === h.nodeIds[i]);
+      assert.ok(ok, `r=${radius}: illegal move ${h.nodeIds[i - 1]}→${h.nodeIds[i]}`);
+    }
+    // starts at the destination and the first streets are the nearest ones
+    assert.ok(segLen(h.points[0], center) < 5);
+    const targetLen = g.blocks.filter((b) => b.target).reduce((s, b) => s + b.len, 0);
+    assert.ok(h.length < targetLen * 2.6, `r=${radius}: ${Math.round(h.length)} m driven for ${Math.round(targetLen)} m of streets`);
+  }
+  // the first half of the drive stays nearer the destination than the second half (spiral outwards)
+  const g = buildGraph(osm, center, 400), h = planHunt(g, center, { maxLength: 1e9 });
+  const half = Math.floor(h.points.length / 2), avg = (a) => a.reduce((s, p) => s + segLen(p, center), 0) / a.length;
+  assert.ok(avg(h.points.slice(0, half)) < avg(h.points.slice(half)));
+  assert.ok(h.turns.length > 5 && h.turns.every((t) => t.name));
+  // turns carry their exact position, so a route that passes the same junction twice still gets every call right
+  const calls = generatePaceNotes(h.points, { steps: h.turns, streets: true }).notes;
+  const junctions = calls.filter((n) => n.kind === 'junction');
+  assert.ok(junctions.length >= h.turns.length * 0.9, `${junctions.length} of ${h.turns.length} turns called`);
+  assert.ok(junctions.every((n) => / onto /.test(n.label)));
+  assert.match(overpassQuery(40.8, -73.9, 1200), /around:1\d{3},/);
+});
+
+test('big radius: planned in batches, nearest first, continuing where the last batch stopped', () => {
+  const { osm, center } = cityGrid(25);
+  const g = buildGraph(osm, center, 1000);
+  let h = planHunt(g, center, { maxLength: 5000 }), batches = 1, all = h.covered;
+  assert.ok(h.length <= 5400 && h.remaining > 0);
+  const firstAvg = h.points.reduce((s, p) => s + segLen(p, center), 0) / h.points.length;
+  while (h.remaining > 0 && batches < 50) { h = planHunt(g, h.points.at(-1), { maxLength: 5000, done: h.done }); all += h.covered; batches++; }
+  assert.equal(h.remaining, 0);
+  assert.equal(all, h.total);                                     // every street, once, across the batches
+  assert.ok(firstAvg < 600, `first batch stays near the destination (${Math.round(firstAvg)} m)`);
+});

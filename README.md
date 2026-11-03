@@ -174,6 +174,16 @@ Your best run is recorded as a trace of (time, distance), roughly every 5 m or e
 
 On a circuit, your best lap chases you from the next lap of the same race. A ghost is only replaced by a faster one. Ghosts are stored per route (`codriver.ghosts`).
 
+## 🅿️ Parking hunt
+
+Pick a destination: **🅿️ Find parking here** on a place, on a long-press, or on the route page under **Parking hunt at the destination**. Set **any radius**, from 100 m to 10 km, with the slider or by typing a number in m or mi.
+
+1. The streets inside the circle (plus a margin, so connections work) are downloaded from OpenStreetMap through Overpass. That's residential streets by default, with avenues and boulevards optional. One-way tags are read.
+2. `parking.js` turns them into a street graph of blocks between intersections, in the directions you're allowed to drive each one.
+3. **Planning, closest first:** from the destination, it repeatedly drives to the best street not yet driven and along it. "Best" means the driving distance to reach it plus 0.8 × its distance from the destination, so the hunt spirals outwards and the first spots you pass are the nearest. Streets passed on the way count as searched. Immediate U-turns cost extra. The Dijkstra search stops as soon as nothing nearer can beat the best street found, so even 2 km radii plan in well under a second.
+4. **Batches:** big radii cover a lot of street (about 100 km for 1 km in a dense grid), so each batch is about **15 km** of driving. At the end of a batch, **"No spot yet? Continue the hunt"** plans the next batch from where you are, skipping streets already driven, until the whole radius is done.
+5. You're routed from where you are to the start of the hunt, then guided turn by turn with street names. Each turn carries its exact position along the route, because the hunt passes some junctions more than once. No countdown, and the search circle shows on the map.
+
 ## Saving and backup
 
 Places, routes, recce notes, fixes, ghosts and best times are stored in the browser (`localStorage`). That storage belongs to the site address, is wiped when a **Private** tab closes, and is refused under Safari's **Block All Cookies**.

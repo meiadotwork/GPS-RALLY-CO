@@ -77,6 +77,7 @@
     <div class="row"><label class="sim">Simulate
       <select id="simSpeed"><option value="0">off</option><option value="60">60</option><option value="90">90</option><option value="120">120</option></select>
     </label></div>
+    <div class="row"><button id="btnHunt" class="pill ghost">🅿️ Parking hunt at the destination</button></div>
     <div class="row"><button id="btnStart2" class="pill go" hidden>Start</button></div>
     <div class="row"><button id="btnCancel" class="pill danger" hidden>Cancel route</button></div>
     <h3 class="sub new-head">New route</h3>
@@ -191,6 +192,28 @@
   </form>
 </section>
 
+<!-- parking hunt -->
+<section id="huntSheet" class="sheet" hidden>
+  <header><h2>🅿️ Parking hunt</h2><button class="close" data-close>✕</button></header>
+  <p id="huntWhere" class="fine"></p>
+  <label class="hunt-lbl">Search radius</label>
+  <div class="hunt-radius">
+    <input id="huntRange" type="range" min="100" max="5000" step="50">
+    <input id="huntValue" type="number" inputmode="decimal" min="0" step="any"><span id="huntUnit">m</span>
+  </div>
+  <label class="toggle"><input type="checkbox" id="huntMain"> Include main roads (avenues, boulevards)</label>
+  <p class="fine">Drives every street in the circle, starting with the ones closest to your destination and spiralling outwards, so the first spots you see are the nearest. One-way streets are respected. Big areas are planned in batches of about 15 km; if you reach the end with no spot, you can continue further out.</p>
+  <div class="row"><button id="huntGo" class="pill go">Plan the hunt</button></div>
+  <p id="huntStatus" class="fine"></p>
+</section>
+
+<!-- end of a hunt batch -->
+<section id="huntDoneSheet" class="sheet" hidden>
+  <header><h2>🅿️ No spot yet?</h2><button class="close" data-close>✕</button></header>
+  <p id="huntDoneText"></p>
+  <div class="row"><button id="huntContinue" class="pill go">Continue the hunt</button><button id="huntStop" class="pill ghost">I parked</button></div>
+</section>
+
 <!-- fix a call -->
 <section id="fixSheet" class="sheet tall" hidden>
   <header><h2>Fix this call</h2><button class="close" data-close>✕</button></header>
@@ -228,6 +251,7 @@
   <p id="plWhere" class="fine"></p>
   <div class="row"><button id="plGo" class="pill go">🏁 Go — best route</button></div>
   <div class="row"><button id="plPlan" class="pill ghost">✎ Plan my own way (add points)</button></div>
+  <div class="row"><button id="plPark" class="pill ghost">🅿️ Find parking here</button></div>
   <h3 class="sub">Saved routes to here</h3>
   <ul id="plRoutes" class="mr-list"></ul>
   <div class="row"><button id="plRename" class="pill ghost">Rename</button><button id="plIcon" class="pill ghost">Change icon</button><button id="plDelete" class="pill danger">Delete</button></div>

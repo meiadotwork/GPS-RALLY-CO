@@ -3,6 +3,7 @@ import { RouteTracker, CallScheduler, DriveSim } from './navcore.js';
 import { buildStage } from './sample-route.js';
 import { specToHash, hashToSpec } from './share.js';
 import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js';
+import { overpassQuery, buildGraph, planHunt } from './parking.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
@@ -12,7 +13,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, huntRadius: 400, huntMain: 'off', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -296,6 +297,7 @@ async function planMode(base, mode, noToll = false) {
 }
 
 function setRoute(r, { fit = true } = {}) {
+  if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
     steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off',
     elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
@@ -462,6 +464,7 @@ async function buildRoute(spec, loop = S.loop, opts) {
 
 function cancelRoute() {
   if (S.nav) stopNav();
+  S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null;
   if (S.mode === 'edit') endEdit(false);
   S.hitLayer?.remove();
   S.routeLayer?.remove(); S.noteLayer?.remove();
@@ -544,12 +547,12 @@ map.on('contextmenu', (e) => { // long-press
   if (S.nav || S.mode === 'edit' || S.mode === 'draw') return;
   const ll = [e.latlng.lat, e.latlng.lng];
   const el = document.createElement('div'); el.className = 'lp-pop';
-  el.innerHTML = '<button class="pill go" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
+  el.innerHTML = '<button class="pill go" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
   const pop = L.popup({ closeButton: false, className: 'lp-wrap' }).setLatLng(e.latlng).setContent(el).openOn(map);
   el.onclick = (ev) => {
     const a = ev.target.dataset?.a; if (!a) return;
     map.closePopup(pop);
-    if (a === 'go') routeTo(ll); else addPlace(ll[0], ll[1]);
+    if (a === 'go') routeTo(ll); else if (a === 'park') openHunt(ll, 'this spot'); else addPlace(ll[0], ll[1]);
   };
 });
 map.on('click', (e) => {
@@ -850,7 +853,7 @@ function onRaceEvent(e) {
     let msg = `Lap ${e.n}, ${sayTime(e.ms)}${e.best ? ', best lap' : ''}.`;
     if (left === 1) msg += ' Last lap!';
     if (left !== 0) speak(msg);
-  } else if (e.type === 'finish') finishRace(e.result);
+  } else if (e.type === 'finish') { if (S.route.spec?.parking) finishHunt(); else finishRace(e.result); }
   if (e.type === 'lap') { const tr = S.race.lapTraces.at(-1); if (tr) { const g = { ms: e.ms, trace: compressTrace(tr) }; if (saveGhost(g)) { S.ghostSaved = true; S.ghost = g; } } } // your best lap so far chases you from the next lap
 }
 
@@ -913,10 +916,8 @@ function startNav() {
   speak('Stage ready.', true); // also unlocks speech on iOS (needs a tap)
 
   const sim = +$('simSpeed').value;
-  countdown(() => {
-    S.race.start(Date.now());
-    if (sim > 0) startSim(sim);
-  });
+  const go = () => { S.race.start(Date.now()); if (sim > 0) startSim(sim); };
+  if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); } else countdown(go);
   if (sim > 0) {
     // the simulated car waits on the line until GO
   } else {
@@ -1570,3 +1571,113 @@ async function importBackup(file) {
 $('btnExport').onclick = exportBackup;
 $('btnImport').onclick = () => $('importFile').click();
 $('importFile').onchange = (e) => { const f = e.target.files?.[0]; if (f) importBackup(f); e.target.value = ''; };
+
+// ---------- 🅿️ parking hunt: every street within a radius, closest first ----------
+let huntTarget = null;
+const huntUnit = () => (settings.units === 'imperial' ? 'mi' : 'm');
+function paintHuntRadius() {
+  const r = settings.huntRadius;
+  $('huntRange').value = Math.min(5000, r);
+  $('huntValue').value = settings.units === 'imperial' ? (r / 1609.34).toFixed(2) : Math.round(r);
+  $('huntUnit').textContent = huntUnit();
+  $('huntMain').checked = settings.huntMain === 'on';
+}
+function openHunt(ll, label) {
+  huntTarget = { lat: ll[0], lon: ll[1], label };
+  $('huntWhere').textContent = `Around ${label}`;
+  $('huntStatus').textContent = '';
+  paintHuntRadius();
+  openSheet('huntSheet');
+}
+$('huntRange').oninput = (e) => { settings.huntRadius = +e.target.value; saveSettings(); paintHuntRadius(); };
+$('huntValue').onchange = (e) => {
+  const v = parseFloat(e.target.value); if (!(v > 0)) return paintHuntRadius();
+  settings.huntRadius = Math.max(50, Math.min(10000, settings.units === 'imperial' ? v * 1609.34 : v));
+  saveSettings(); paintHuntRadius();
+};
+$('huntMain').onchange = (e) => { settings.huntMain = e.target.checked ? 'on' : 'off'; saveSettings(); };
+
+async function fetchStreets(lat, lon, radius, main) {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), radius > 1500 ? 100000 : 50000);
+  try {
+    const res = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(overpassQuery(lat, lon, radius, main)),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+    if (!res.ok) throw new Error(res.status === 429 ? 'map server busy, try again in a minute' : 'map server error ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(tm); }
+}
+
+const HUNT_BATCH = 15000; // metres of driving per batch; big radii continue in more batches
+async function planHuntRoute(from, { cont = false } = {}) {
+  const H = S.hunt;
+  const h = planHunt(H.g, from, { maxLength: HUNT_BATCH, done: cont ? H.done : null });
+  if (!h.points.length || !h.covered) throw new Error(cont ? 'no more streets to search' : 'no drivable streets found here');
+  H.done = h.done; H.remaining = h.remaining; H.total = h.total; H.batch = (cont ? H.batch : 0) + 1;
+  // get there first (unless you're already at the start)
+  let points = h.points, steps = h.turns;
+  const here = S.fix ? [S.fix.lat, S.fix.lon] : null;
+  if (here && segLen(here, h.points[0]) > 120) {
+    try {
+      const a = await osrmRoute([here, h.points[0]]);
+      points = [...a.points, ...h.points.slice(1)];
+      let approach = 0; for (let i = 1; i < a.points.length; i++) approach += segLen(a.points[i - 1], a.points[i]);
+      steps = [...a.steps.filter((st) => st.maneuver.type !== 'arrive').map(({ distance, ...st }) => st),
+        ...h.turns.map((t) => ({ ...t, _s: t._s + approach }))]; // hunt turns keep their exact position
+    } catch { /* no approach route: start the hunt where it is */ }
+  }
+  const name = `🅿️ Parking · ${H.label}` + (H.batch > 1 ? ` (${H.batch})` : '');
+  S.loop = false; paintLoop();
+  // time: getting there at town speed, then the hunt itself at ~15 km/h (looking for a spot)
+  let total = 0; for (let i = 1; i < points.length; i++) total += segLen(points[i - 1], points[i]);
+  const duration = (total - h.length) / (35 / 3.6) + h.length / (15 / 3.6);
+  setRoute({ points, steps, duration, spec: { raw: true, points, steps, name, parking: { lat: H.lat, lon: H.lon, r: H.radius } }, loop: false,
+    dest: points.at(-1), waypoints: [points.at(-1)] });
+  // the search area
+  S.huntCircle?.remove();
+  S.huntCircle = L.circle([H.lat, H.lon], { radius: H.radius, color: '#4aa3ff', weight: 2, dashArray: '6 8', fillOpacity: 0.05, interactive: false }).addTo(map);
+  const mins = Math.round(duration / 60);
+  return `${plural(h.covered, 'street')} nearest ${H.label} · ${fmtDist(h.length)} · ~${mins} min` +
+    (h.remaining ? ` — ${h.remaining} more further out (Continue later)` : '') + (h.unreachable ? ` · ${h.unreachable} unreachable` : '');
+}
+
+$('huntGo').onclick = async () => {
+  if (!huntTarget) return;
+  const { lat, lon, label } = huntTarget, radius = settings.huntRadius, main = settings.huntMain === 'on';
+  $('huntGo').disabled = true;
+  $('huntStatus').textContent = radius > 1500 ? 'Downloading streets (big area — this can take up to a minute)…' : 'Downloading streets…';
+  try {
+    const osm = await fetchStreets(lat, lon, radius, main);
+    $('huntStatus').textContent = 'Planning the hunt…';
+    await new Promise((r) => setTimeout(r, 30)); // let the screen update
+    const g = buildGraph(osm, [lat, lon], radius);
+    S.hunt = { g, lat, lon, radius, label, done: null };
+    const msg = await planHuntRoute([lat, lon]);
+    $('huntSheet').hidden = true;
+    toast(msg, 7000);
+  } catch (err) {
+    $('huntStatus').textContent = 'Couldn’t plan: ' + (err.name === 'AbortError' ? 'the map server took too long — try a smaller radius' : err.message);
+  }
+  $('huntGo').disabled = false;
+};
+
+// end of a batch: found nothing yet? keep going, further out
+function finishHunt() {
+  stopNav();
+  const H = S.hunt;
+  if (!H || !H.remaining) { speak('Hunt complete. Every street searched.'); toast('Every street in the area has been searched'); return; }
+  $('huntDoneText').textContent = `Searched batch ${H.batch}. ${H.remaining} streets left further out in your ${fmtDist(H.radius)} radius.`;
+  openSheet('huntDoneSheet');
+  speak('End of this batch. Continue the hunt?');
+}
+$('huntContinue').onclick = async () => {
+  $('huntDoneSheet').hidden = true;
+  toast('Planning the next streets…', 8000);
+  try {
+    const from = S.fix ? [S.fix.lat, S.fix.lon] : S.route.points.at(-1);
+    toast(await planHuntRoute(from, { cont: true }), 6000);
+    startNav();
+  } catch (err) { toast('Couldn’t continue: ' + err.message); }
+};
+$('huntStop').onclick = () => { $('huntDoneSheet').hidden = true; };
+$('plPark').onclick = () => openHunt([curPlace.lat, curPlace.lon], `${curPlace.icon} ${curPlace.name}`);
+$('btnHunt').onclick = () => { if (S.route) openHunt(S.route.dest || S.route.points.at(-1), S.route.spec?.name?.replace(/^To /, '') || 'your destination'); };
