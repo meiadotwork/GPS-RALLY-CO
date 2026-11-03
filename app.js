@@ -570,12 +570,19 @@ map.on('click', (e) => {
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
 
+// numbered as you draw: S, 1, 2, 3… — the newest point is the finish (🏁), or S/F closes the loop on a circuit
 function renderDraw() {
   S.drawLayer?.remove();
+  const n = S.draw.length, last = n - 1;
+  const label = (i) => (i === 0 ? (S.loop ? 'S/F' : 'S') : i === last && !S.loop && n > 1 ? `${i}🏁` : String(i));
+  const cls = (i) => 'edit-pt draw-pt' + (i === 0 ? ' first' : i === last && !S.loop && n > 1 ? ' last' : '');
   S.drawLayer = L.layerGroup([
     L.polyline(S.draw, { color: '#4aa3ff', weight: 4, dashArray: '6 8' }),
-    ...S.draw.map((p) => L.circleMarker(p, { radius: 6, color: '#4aa3ff', fillOpacity: 1 })),
+    ...(S.loop && n > 2 ? [L.polyline([S.draw[last], S.draw[0]], { color: '#4aa3ff', weight: 3, dashArray: '2 8', opacity: 0.7 })] : []),
+    ...S.draw.map((p, i) => L.marker(p, { interactive: false, zIndexOffset: 1000 + i,
+      icon: L.divIcon({ className: cls(i), html: label(i), iconSize: [30, 30] }) })),
   ]).addTo(map);
+  $('drawBar').querySelector('span').textContent = n ? `${n} point${n > 1 ? 's' : ''} — tap to add checkpoint ${n === 1 ? 1 : n}` : 'Tap the map to set the start';
 }
 function endDraw() { S.mode = 'idle'; $('drawBar').hidden = true; S.drawLayer?.remove(); if (S.route) paintSummary(); }
 $('btnDraw').onclick = () => {
@@ -587,7 +594,7 @@ function paintLoop() {
   $('drawLoop').classList.toggle('on', S.loop);
   $('drawLoop').textContent = S.loop ? '⟳ Circuit' : '→ One way';
 }
-$('drawLoop').onclick = () => { S.loop = !S.loop; paintLoop(); };
+$('drawLoop').onclick = () => { S.loop = !S.loop; paintLoop(); if (S.mode === 'draw') renderDraw(); };
 $('loopToggle').onchange = async (e) => {
   S.loop = e.target.checked; paintLoop();
   if (!S.route) return;

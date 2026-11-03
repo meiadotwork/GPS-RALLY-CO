@@ -244,3 +244,6 @@ h3.new-head { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 
 .hunt-lbl { margin-top: 6px !important; }
 
 .edit-pt.warn { background: var(--warn); color: #fff; border-color: #fff; font-size: 10px; }
+
+.draw-pt { border-color: #4aa3ff; }
+.draw-pt.last { font-size: 10px; }
