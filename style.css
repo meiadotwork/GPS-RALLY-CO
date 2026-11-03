@@ -242,3 +242,5 @@ h3.new-head { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 
 .hunt-radius input[type=range] { flex: 1; }
 #huntValue { width: 86px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: #0d0f12; font-size: 17px; font-weight: 700; text-align: right; }
 .hunt-lbl { margin-top: 6px !important; }
+
+.edit-pt.warn { background: var(--warn); color: #fff; border-color: #fff; font-size: 10px; }

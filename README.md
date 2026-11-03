@@ -129,7 +129,17 @@ In edit mode the **start and destination are fixed** (🔒). You only shape the 
 - Drag a point to move it, or tap it to remove it.
 - **📍 From here** moves the start to where you are now.
 
+## Your checkpoints, your order
+
+This app is for building **your** route, not the "optimal" one:
+- In edit mode, each tap on the map becomes your **next checkpoint**, in the order you tap: before the destination, or at the end on a circuit. To put a point between two existing ones, tap the route line at that spot.
+- Your checkpoints are **never removed or reordered** by the app. Route types (Shortest, Smooth) plan each leg *between* your checkpoints, in your order. Editing an Explore route turns it into a plain route through your exact points.
+- If one of your checkpoints makes the route loop round a block (it snapped to a side street or the far side of the road), it is **kept**, marked **⚠** in red in edit mode, and the app tells you which one, so you can drag it onto the road you mean.
+
 ## Smooth routes (no pointless loops or U-turns)
+
+*(Only for points the app adds itself — Smooth/Explore/round-circuit pins. Your own checkpoints are never dropped; see above.)*
+
 
 Every point you add is a must-pass point for OSRM, and OSRM won't U-turn at a waypoint (`continue_straight`). A point that lands on a side street, or on the far side of the road, therefore makes the route go past it, loop round the block and come back. With **Settings → Smooth routes** on (the default), `routing.js` handles this:
 

@@ -157,7 +157,9 @@ async function fetchFiltered(coords, startBearing, alternatives, noToll) {
 //  - with points in between: a point that only makes the route loop round a block or U-turn
 //    (usually it landed on a side street or the far side of the road) is skipped, as long as
 //    the route without it still passes within 60 m of it.
-async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false) {
+// droppable: Set of points the APP added (Smooth/Explore/round pins). Your own checkpoints are never
+// dropped or reordered; if one makes the route loop round a block it's kept and reported in loopWarn.
+async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false, droppable = null) {
   const smooth = settings.smooth !== 'off';
   const wantAlt = coords.length === 2 && (smooth || mode === 'shortest');
   let j = await fetchFiltered(coords, startBearing, wantAlt, noToll);
@@ -166,7 +168,8 @@ async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false)
   if (noToll) { const min = Math.min(...routes.map(tollCount)); routes = routes.filter((r) => tollCount(r) === min); }
   let r = routes[mode === 'shortest' ? pickShortest(routes) : smooth ? chooseSmoothest(routes) : 0];
   let used = coords, dropped = 0;
-  if (smooth && coords.length > 2) {
+  const warn = new Set();
+  if (coords.length > 2) {
     const keep = new Set();
     for (let it = 0; it < 4; it++) {
       const uturns = r.legs.flatMap((l) => l.steps)
@@ -174,7 +177,8 @@ async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false)
         .map((st) => [st.maneuver.location[1], st.maneuver.location[0]]);
       const snapped = (j.waypoints || []).map((w) => [w.location[1], w.location[0]]);
       const { bad } = detourVias(geomPts(r), snapped, uturns);
-      const k = bad.find((x) => !keep.has(used[x].join()));
+      for (const x of bad) if (!droppable?.has(used[x])) warn.add(used[x]); // yours: keep, but tell
+      const k = smooth ? bad.find((x) => droppable?.has(used[x]) && !keep.has(used[x].join())) : null;
       if (k == null) break;
       const trial = used.filter((_, i) => i !== k);
       try {
@@ -188,7 +192,8 @@ async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false)
   const steps = legs.flatMap((l, li) => l.steps.filter((s) => s.maneuver.type !== 'arrive' || li === legs.length - 1));
   const tolls = tollCount(r);
   const tollNote = noToll && tolls ? `No toll-free way found — this route passes ${tolls} toll point${tolls > 1 ? 's' : ''}` : '';
-  return { points: geomPts(r), steps, duration: r.duration, distance: r.distance, dropped, used, tollNote, tolls };
+  const loopWarn = [...warn].filter((p) => used.includes(p));
+  return { points: geomPts(r), steps, duration: r.duration, distance: r.distance, dropped, used, tollNote, tolls, loopWarn };
 }
 const asResult = (r, used) => {
   const legs = r.legs;
@@ -199,11 +204,11 @@ const asResult = (r, used) => {
 // Circuits, and A→B with your own points: choose each leg's way for the route type, pin it with a
 // hidden point, then route the whole thing in one go (keeps loop/U-turn smoothing across joints).
 async function planLegs(coords, mode, noToll = false) {
-  const out = [coords[0]];
+  const out = [coords[0]], pins = new Set();
   for (let k = 0; k < coords.length - 1; k++) {
     const a = coords[k], b = coords[k + 1];
     if (segLen(a, b) < 300) { out.push(b); continue; }            // too short to have options
-    if (mode === 'explore') { out.push(...exploreVias(a, b).slice(1, -1), b); continue; }
+    if (mode === 'explore') { const ev = exploreVias(a, b).slice(1, -1); ev.forEach((p) => pins.add(p)); out.push(...ev, b); continue; }
     const j = await fetchFiltered([a, b], null, true, noToll);
     let routes = j.routes;
     if (noToll) { const min = Math.min(...routes.map(tollCount)); routes = routes.filter((r) => tollCount(r) === min); }
@@ -213,7 +218,7 @@ async function planLegs(coords, mode, noToll = false) {
       if (routes[i] !== j.routes[0]) pin = pointAlong(geomPts(routes[i]), 0.5);
     } else if (mode === 'smooth') {
       const cands = routes.map((r) => ({ ...asResult(r, [a, b]), pin: r === j.routes[0] ? null : pointAlong(geomPts(r), 0.5) }));
-      const side = await Promise.allSettled(smoothCandidates(a, b).map((c) => osrmRoute(c, null, 'fastest', noToll).then((x) => ({ ...x, pin: c[1] }))));
+      const side = await Promise.allSettled(smoothCandidates(a, b).map((c) => osrmRoute(c, null, 'fastest', noToll, new Set([c[1]])).then((x) => ({ ...x, pin: c[1] }))));
       side.forEach((x) => { if (x.status === 'fulfilled') cands.push(x.value); });
       const fastest = Math.min(...cands.map((c) => c.duration));
       let bs = Infinity;
@@ -223,10 +228,10 @@ async function planLegs(coords, mode, noToll = false) {
         if (sc < bs) { bs = sc; pin = c.pin; }
       }
     }
-    if (pin) out.push(pin);
+    if (pin) { out.push(pin); pins.add(pin); }
     out.push(b);
   }
-  return osrmRoute(out, null, 'fastest', noToll);
+  return osrmRoute(out, null, 'fastest', noToll, pins); // only the app's pins may be dropped
 }
 
 // Round circuit from a to b and back without reusing the same roads: try ways out and ways back
@@ -235,7 +240,7 @@ async function planLegs(coords, mode, noToll = false) {
 async function planRound(a, b, mode, noToll = false) {
   const { outs, rets } = roundCandidates(a, b, mode === 'explore' ? Math.random : null);
   // plain legs use the route type's own pick (e.g. shortest) and get pinned at their midpoint so the final route keeps them
-  const run = (c) => osrmRoute(c, null, c.length === 2 && mode === 'shortest' ? 'shortest' : 'fastest', noToll)
+  const run = (c) => osrmRoute(c, null, c.length === 2 && mode === 'shortest' ? 'shortest' : 'fastest', noToll, c.length === 3 ? new Set([c[1]]) : null)
     .then((r) => ({ ...r, pin: c.length === 3 ? c[1] : pointAlong(r.points, 0.5) }));
   const settle = async (list) => (await Promise.allSettled(list.map(run))).filter((x) => x.status === 'fulfilled').map((x) => x.value);
   const [O, R] = await Promise.all([settle(outs), settle(rets)]);
@@ -252,7 +257,7 @@ async function planRound(a, b, mode, noToll = false) {
     : mode === 'explore' ? Math.random() : p.o.duration + p.r.duration;
   const best = pool.reduce((m, p) => (cost(p) < cost(m) ? p : m));
   const coords = [a, best.o.pin, b, best.r.pin, a].filter(Boolean);
-  const res = await osrmRoute(coords, null, 'fastest', noToll);
+  const res = await osrmRoute(coords, null, 'fastest', noToll, new Set([best.o.pin, best.r.pin]));
   // how round did it come out? compare the way out with the way back
   const split = res.points.reduce((bi, p, i) => (segLen(p, b) < segLen(res.points[bi], b) ? i : bi), 0);
   const ov = sharedFraction(res.points.slice(0, split + 1), res.points.slice(split));
@@ -269,7 +274,7 @@ async function planMode(base, mode, noToll = false) {
     const cands = [];
     const j = await fetchFiltered(base, null, true, noToll);
     j.routes.forEach((r) => cands.push({ ...asResult(r, base), tolls: tollCount(r) }));
-    const side = await Promise.allSettled(smoothCandidates(a, b).map((c) => osrmRoute(c, null, 'fastest', noToll)));
+    const side = await Promise.allSettled(smoothCandidates(a, b).map((c) => osrmRoute(c, null, 'fastest', noToll, new Set([c[1]]))));
     side.forEach((x) => { if (x.status === 'fulfilled') cands.push(x.value); });
     const fastest = Math.min(...cands.map((c) => c.duration));
     const minToll = noToll ? Math.min(...cands.map((c) => c.tolls || 0)) : Infinity;
@@ -289,7 +294,8 @@ async function planMode(base, mode, noToll = false) {
   const fast = (await fetchFiltered(base, null, false, noToll)).routes[0].distance;
   let last = null;
   for (let k = 0; k < 4; k++) {
-    const r = await osrmRoute(exploreVias(a, b), null, 'fastest', noToll);
+    const ev = exploreVias(a, b);
+    const r = await osrmRoute(ev, null, 'fastest', noToll, new Set(ev.slice(1, -1)));
     last = r;
     if (r.distance <= fast * 2) return r;
   }
@@ -440,19 +446,20 @@ async function buildRoute(spec, loop = S.loop, opts) {
       }
     } else {
       r = await osrmRoute(coords, null, mode === 'shortest' ? 'shortest' : 'fastest', noToll);
-      if (r.dropped) { // keep the route's points in step with what was actually used
-        const used = loop ? r.used.slice(0, -1) : r.used;
-        spec = { ...spec, via: used };
-      }
     }
     if (r.tollNote) toast(r.tollNote, 5000);
+    // a checkpoint of yours that makes the route loop round a block: keep it, flag it, say which one
+    r.warnPts = (r.loopWarn || []).map((p) => p.slice());
+    if (r.warnPts.length) {
+      const nums = r.warnPts.map((p) => spec.via.findIndex((q) => q[0] === p[0] && q[1] === p[1])).filter((i) => i > 0);
+      if (nums.length) toast(`Checkpoint ${nums.join(', ')} makes the route loop round a block — it's probably on a side street or the far side of the road. Drag it onto the road you mean (✎ Edit points).`, 7000);
+    }
     {
       const b = spec.base || spec.via;
       const key = b.map((p) => p.map((x) => x.toFixed(4)).join()).join('>') + (loop ? '|loop' : '') + (noToll ? '|nt' : '');
       if (S.modeKey !== key) { S.modeKey = key; S.modeInfo = {}; }
       S.modeInfo[mode] = { dist: r.distance, dur: r.duration, info: r.info };
     }
-    if (r.dropped) toast(`Smoothed: skipped ${r.dropped} point${r.dropped > 1 ? 's' : ''} that only made the route loop or U-turn`, 4000);
   }
   const via = spec.raw ? [spec.points[0], spec.points.at(-1)] : spec.via;
   setRoute({
@@ -1101,7 +1108,7 @@ function startEdit() {
   if (S.nav) stopNav();
   const sp = S.route.spec;
   editOrig = { ...sp };
-  editPts = (sp.raw ? sp.points : sp.via).map((p) => p.slice());
+  editPts = (sp.raw ? sp.points : sp.base || sp.via).map((p) => p.slice()); // your points, not the app's hidden pins
   editHist = [];
   S.mode = 'edit';
   document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
@@ -1120,8 +1127,9 @@ function drawEditPts() {
     const lab = i === 0 ? (loop ? 'S/F' : 'S') : (i === last && !loop ? 'F' : String(i));
     // start and destination stay put: you only shape the way in between
     const locked = i === 0 || (i === last && !loop);
+    const warn = (S.route.warnPts || []).some((q) => segLen(q, p) < 2);
     const m = L.marker(p, { draggable: !locked, autoPan: true, zIndexOffset: locked ? 1500 : 2000,
-      icon: L.divIcon({ className: 'edit-pt' + (i === 0 ? ' first' : i === last && !loop ? ' last' : '') + (locked ? ' locked' : ''), html: lab, iconSize: [30, 30] }) });
+      icon: L.divIcon({ className: 'edit-pt' + (i === 0 ? ' first' : i === last && !loop ? ' last' : '') + (locked ? ' locked' : '') + (warn ? ' warn' : ''), html: warn ? '⚠' + lab : lab, iconSize: [30, 30] }) });
     m.on('dragend', (e) => { const ll = e.target.getLatLng(); editPush(); editPts[i] = [ll.lat, ll.lng]; rebuildEdit(); });
     m.on('click', () => {
       if (locked) return toast(i === 0 ? 'Start is fixed — use “From here” to start where you are' : 'Destination is fixed — pick a new destination to change it');
@@ -1133,9 +1141,14 @@ function drawEditPts() {
 }
 function editPush() { editHist.push(editPts.map((p) => p.slice())); }
 // tap on the map: the new point goes between the two points it fits best (never moves the destination)
+// tap on the map: the NEXT checkpoint, in the order you tap (before the destination; at the end on a circuit).
+// To put a point between two others, tap the route line there instead.
 function editAppend(ll) {
-  const ring = S.route.loop ? [...editPts, editPts[0]] : editPts;
-  editPush(); editPts.splice(bestInsertIndex(ring, ll), 0, ll); rebuildEdit();
+  editPush();
+  const at = S.route.loop ? editPts.length : editPts.length - 1;
+  editPts.splice(at, 0, ll);
+  toast(`Checkpoint ${at} added — the route goes through your checkpoints in this order`, 2500);
+  rebuildEdit();
 }
 function onRouteTap(e) {
   if (S.mode !== 'edit') return;
@@ -1154,14 +1167,15 @@ async function rebuildEdit() {
   if (editBusy) { editBusy = 'again'; return; }
   editBusy = true;
   const base = S.route.spec;
-  const spec = base.raw ? { raw: true, points: editPts.map((p) => p.slice()), name: base.name, savedId: base.savedId } : { via: editPts.map((p) => p.slice()), name: base.name, savedId: base.savedId, noToll: !!base.noToll };
+  const spec = base.raw ? { raw: true, points: editPts.map((p) => p.slice()), name: base.name, savedId: base.savedId }
+    : { via: editPts.map((p) => p.slice()), name: base.name, savedId: base.savedId, noToll: !!base.noToll, mode: base.mode === 'explore' ? undefined : base.mode }; // re-plans around your points, in your order (explore would re-roll on every tap)
   try { await buildRoute(spec, S.route.loop, { fit: false }); }
   catch (err) { toast('Routing failed: ' + err.message); }
   const again = editBusy === 'again';
   editBusy = false;
   if (S.mode === 'edit') {
-    const sp = S.route.spec; // smoothing may have skipped a point: show what's really used
-    editPts = (sp.raw ? sp.points : sp.via).map((p) => p.slice());
+    const sp = S.route.spec;
+    editPts = (sp.raw ? sp.points : sp.base || sp.via).map((p) => p.slice());
     drawRoute(false); drawEditPts();
   }
   if (again) rebuildEdit();
@@ -1355,7 +1369,7 @@ function paintModes() {
   $('filterRow').innerHTML =
     f('toll', nt, '💸 Avoid tolls', nt ? 'on — for every route' : 'off') +
     (roundable ? f('round', settings.round !== 'off', '🔁 No repeated roads', settings.round !== 'off' ? (info[cur]?.info?.includes('repeated') ? info[cur].info : 'round circuit') : 'off') : '') +
-    f('tidy', settings.smooth !== 'off', '🧹 Skip loops & U-turns', settings.smooth !== 'off' ? 'on' : 'off');
+    f('tidy', settings.smooth !== 'off', '🧹 Skip loops & U-turns', settings.smooth !== 'off' ? 'on — only points the app adds' : 'off');
   $('modeRow').innerHTML =
     Object.entries(MODES).map(([m, label]) => {
       const i = info[m];
