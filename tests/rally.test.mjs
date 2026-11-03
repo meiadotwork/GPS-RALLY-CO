@@ -317,3 +317,45 @@ test('round circuits: measure how much of the way back repeats the way out', () 
   assert.ok(sharedFraction(straight, side) < 0.1, `shared ${sharedFraction(straight, side)}`);
   assert.equal(roundCandidates(A, B).outs.length, 3);
 });
+
+import { ghostTimeAt, ghostDistAt, ghostDelta, compressTrace } from '../race.js';
+test('ghost: a run is recorded, and the live gap says ahead / behind', () => {
+  const r = new Race({ total: 2000 }); r.start(0);
+  let res;
+  for (let t = 0, s = 0; !res; t += 1000, s += 20) for (const e of r.update(t, s, 20)) if (e.type === 'finish') res = e.result;
+  const g = res.ghost;
+  assert.ok(g && g.trace.length > 10);
+  assert.ok(Math.abs(ghostTimeAt(g.trace, 1000) - 50000) < 1500);       // 20 m/s → 1000 m at ~50 s
+  assert.ok(Math.abs(ghostDistAt(g.trace, 25000) - 500) < 30);
+  assert.ok(ghostDelta(g.trace, 45000, 1000) < 0);                      // got there sooner → ahead (−)
+  assert.ok(ghostDelta(g.trace, 55000, 1000) > 0);                      // later → behind (+)
+  assert.equal(compressTrace(Array.from({ length: 2000 }, (_, i) => [i * 10, i])).length, 600);
+});
+
+test('ghost on a circuit is the best lap, with distance measured from the line', () => {
+  const L = 2000, r = new Race({ total: L, loop: true, laps: 2 }); r.start(0);
+  let res, t = 0, s = 10;
+  while (!res) {                                                         // lap 1 at 20 m/s, lap 2 at 25 m/s
+    for (const e of r.update(t, s, 20)) if (e.type === 'finish') res = e.result;
+    t += 1000; s += s < L + 10 ? 20 : 25;
+  }
+  assert.equal(res.laps.length, 2);
+  assert.equal(res.ghost.ms, Math.min(...res.laps));
+  assert.ok(res.ghost.trace[0][1] < 30);                                 // starts at the line
+  assert.ok(Math.abs(res.ghost.trace.at(-1)[1] - L) < 30);               // ends a lap later
+  const seg = new Race({ total: L, loop: true, laps: 1 }); seg.start(0); seg.update(0, 5, 0);
+  assert.deepEqual(seg.segment(3000, 65), { elapsed: 3000, dist: 65 });
+});
+
+test('your fixes change future calls; calibration shifts the rest', () => {
+  const r3 = gen.notes[2];                                                // "right 3"
+  const fixed = generatePaceNotes(stage.points, { steps: stage.steps, fixes: [{ id: 'f1', lat: r3.lat, lon: r3.lon, grade: 2 }] });
+  assert.ok(fixed.notes.some((n) => n.label === 'right 2' && n.fixed === 'f1'));
+  const gone = generatePaceNotes(stage.points, { steps: stage.steps, fixes: [{ id: 'f2', lat: r3.lat, lon: r3.lon, none: true }] });
+  assert.equal(gone.notes.length, gen.notes.length - 1);
+  const sq = generatePaceNotes(stage.points, { steps: stage.steps, fixes: [{ id: 'f3', lat: r3.lat, lon: r3.lon, shape: 'square' }] });
+  assert.ok(sq.notes.some((n) => n.label === 'square right'));
+  const tighter = generatePaceNotes(stage.points, { steps: stage.steps, gradeOffset: -1 });
+  assert.equal(tighter.notes[0].label, 'right 5');                        // right 6 → 5
+  assert.ok(tighter.notes.some((n) => n.label === 'hairpin right, don\'t cut')); // hairpins untouched
+});

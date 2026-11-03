@@ -8,10 +8,18 @@ export class Race {
     this.state = 'idle';
   }
   start(t) {
-    Object.assign(this, { t0: t, state: 'running', init: true, laps: [], lapStart: null, top: 0, dist: 0, lastS: null });
+    Object.assign(this, { t0: t, state: 'running', init: true, laps: [], lapStart: null, top: 0, dist: 0, lastS: null,
+      segT: null, segS: 0, cur: [], lapTraces: [] });
   }
   elapsed(t) { return this.state === 'idle' ? 0 : (this.state === 'done' ? this.result.ms : t - this.t0); }
   lapTime(t) { return this.lapStart == null ? null : t - this.lapStart; }
+  /** Where we are in the timed part (the run, or the current lap): { elapsed ms, dist m } — null on an out lap. */
+  segment(t, s) { return this.segT == null ? null : { elapsed: t - this.segT, dist: s - this.segS }; }
+  _record(t, s, force = false) { // [ms, m] since the segment started, ~every 5 m or 1 s
+    if (this.segT == null) return;
+    const last = this.cur[this.cur.length - 1], e = t - this.segT, d = s - this.segS;
+    if (force || !last || d - last[1] >= 5 || e - last[0] >= 1000) this.cur.push([e, d]);
+  }
 
   /**
    * @param t  time (ms)   @param s  distance along route (unwrapped on a circuit)   @param v  speed (m/s)
@@ -25,7 +33,9 @@ export class Race {
         const L = this.total, m = ((s % L) + L) % L;
         this.lapStart = m < 50 || m > L - 50 ? this.t0 : null; // on the line: lap 1 runs from GO
         this.skipUntil = s + 100; // ignore the line if we start just before it
-      }
+        if (this.lapStart != null) { this.segT = this.t0; this.segS = m < 50 ? s - m : s + (L - m); }
+      } else { this.segT = this.t0; this.segS = s; }
+      this._record(t, s, true);
       return [];
     }
     const ev = [];
@@ -36,13 +46,17 @@ export class Race {
       if (Math.floor(s / L) > Math.floor(this.lastS / L) && s > this.skipUntil) {
         if (this.lapStart != null) {
           const ms = t - this.lapStart, prevBest = this.laps.length ? Math.min(...this.laps) : Infinity;
+          this._record(t, s, true);
+          this.lapTraces.push(this.cur);
           this.laps.push(ms);
           ev.push({ type: 'lap', n: this.laps.length, ms, best: this.laps.length > 1 && ms < prevBest });
         } else ev.push({ type: 'lapstart' });
         this.lapStart = t;
+        this.segT = t; this.segS = Math.floor(s / L) * L; this.cur = []; this._record(t, s, true);
         if (this.target && this.laps.length >= this.target) ev.push(this.finish(t));
       }
-    } else if (s >= this.total - 20) ev.push(this.finish(t));
+    } else if (s >= this.total - 20) { this._record(t, s, true); ev.push(this.finish(t)); }
+    if (this.state === 'running') this._record(t, s);
     this.lastS = s;
     return ev;
   }
@@ -53,6 +67,10 @@ export class Race {
       ms, dist: this.dist, avg: this.dist / Math.max(1, ms / 1000), top: this.top,
       laps: this.laps.slice(), best: this.laps.length ? Math.min(...this.laps) : null,
     };
+    // the ghost to beat next time: the whole run, or the best lap on a circuit
+    if (this.loop) {
+      if (this.laps.length) { const i = this.laps.indexOf(this.result.best); this.result.ghost = { ms: this.result.best, trace: compressTrace(this.lapTraces[i]) }; }
+    } else this.result.ghost = { ms, trace: compressTrace(this.cur) };
     return { type: 'finish', result: this.result };
   }
 }
@@ -77,4 +95,42 @@ export function routeSvgPath(points, w = 300, h = 170, pad = 12) {
   const step = Math.max(1, Math.floor(P.length / 400)); // keep the path light
   const pts = P.filter((_, i) => i % step === 0 || i === P.length - 1);
   return { d: 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L'), start: P[0], end: P[P.length - 1] };
+}
+
+// ---------- ghost ----------
+
+/** Keep a trace small for storage (≤ max points, always keeping the last one). */
+export function compressTrace(trace, max = 600) {
+  if (!trace || trace.length <= max) return (trace || []).map(([t, d]) => [Math.round(t), Math.round(d * 10) / 10]);
+  const step = trace.length / max, out = [];
+  for (let i = 0; i < max - 1; i++) out.push(trace[Math.floor(i * step)]);
+  out.push(trace[trace.length - 1]);
+  return out.map(([t, d]) => [Math.round(t), Math.round(d * 10) / 10]);
+}
+
+/** When did the ghost reach distance d? (ms, interpolated) — null if it never got that far. */
+export function ghostTimeAt(trace, d) {
+  if (!trace?.length || d < trace[0][1]) return trace?.length ? trace[0][0] : null;
+  for (let i = 1; i < trace.length; i++) {
+    const [t1, d1] = trace[i];
+    if (d1 >= d) { const [t0, d0] = trace[i - 1]; return d1 > d0 ? t0 + (t1 - t0) * (d - d0) / (d1 - d0) : t1; }
+  }
+  return null;
+}
+
+/** How far had the ghost got after ms? (m, interpolated; stops at its finish). */
+export function ghostDistAt(trace, ms) {
+  if (!trace?.length) return null;
+  if (ms <= trace[0][0]) return trace[0][1];
+  for (let i = 1; i < trace.length; i++) {
+    const [t1, d1] = trace[i];
+    if (t1 >= ms) { const [t0, d0] = trace[i - 1]; return t1 > t0 ? d0 + (d1 - d0) * (ms - t0) / (t1 - t0) : d1; }
+  }
+  return trace[trace.length - 1][1];
+}
+
+/** Live gap to the ghost at this point: + behind, − ahead (ms). */
+export function ghostDelta(trace, elapsed, dist) {
+  const tg = ghostTimeAt(trace, dist);
+  return tg == null ? null : elapsed - tg;
 }

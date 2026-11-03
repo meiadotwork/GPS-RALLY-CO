@@ -14,6 +14,7 @@
 
 <!-- pace note panel: big arrow, then the call in big letters, details below -->
 <section id="notepanel" hidden>
+  <button id="fixBtn" class="fix-btn" title="That call was wrong">✎ Fix</button>
   <svg id="glyph" viewBox="0 0 100 100"></svg>
   <div id="noteBig">—</div>
   <div id="noteDist"></div>
@@ -23,6 +24,7 @@
   <div class="np-stats">
     <div id="raceClock">0:00.0</div>
     <div id="lapInfo" hidden></div>
+    <div id="delta"></div>
     <div id="remain"></div>
   </div>
 </section>
@@ -148,6 +150,11 @@
   <div class="seg" id="setScale">
     <button data-v="wrc">1 slowest → 6 fastest</button><button data-v="rev">1 fastest → 6 slowest</button>
   </div>
+  <label>Grade calibration</label>
+  <div class="seg" id="setCal">
+    <button data-v="-1">Tighter</button><button data-v="0">As measured</button><button data-v="1">Faster</button>
+  </div>
+  <p id="calHint" class="fine"></p>
   <label>Gentle bends (flat / kink)</label>
   <div class="seg" id="setFlats">
     <button data-v="on">Call them</button><button data-v="off">Skip</button>
@@ -168,6 +175,17 @@
   <label>Voice</label>
   <select id="setVoice"></select>
   <div class="row"><button id="btnTestVoice" class="pill ghost">Test voice</button></div>
+</section>
+
+<!-- fix a call -->
+<section id="fixSheet" class="sheet tall" hidden>
+  <header><h2>Fix this call</h2><button class="close" data-close>✕</button></header>
+  <p id="fixWhat" class="fine"></p>
+  <h3 class="sub" id="fixHead">It really was…</h3>
+  <div id="fixGrades" class="chips fix-grid"></div>
+  <div class="row"><button id="fixNone" class="pill ghost">No corner here</button><button id="fixUndo" class="pill danger" hidden>Remove my fix</button></div>
+  <div class="row"><button id="fixRecce" class="pill ghost">＋ Add recce words (rocks, gravel…)</button></div>
+  <p class="fine">Fixes are saved by location, so every route through this corner uses them. Passenger, please — not while driving.</p>
 </section>
 
 <!-- recce picker -->

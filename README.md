@@ -158,6 +158,26 @@ Tap ✎ on the route chip, or Edit route in the Route sheet. The route's points 
 
 After every change the route is re-snapped to the roads (OSRM) and the notes are regenerated. Undo steps back, Done keeps the changes, and Cancel puts the route back as it was. The route name and the circuit setting are kept.
 
+## Fixing calls and calibration
+
+If a call was wrong, tap **✎ Fix** on the driving screen. A passenger should do this, not the driver. You can also tap any note in **Stage notes**. Choose what the corner really was: hairpin, 1–6, flat, square, acute, or **No corner here**.
+
+- Fixes are saved by **location**, within 25 m of the corner, so every route through that corner uses them.
+- Your fixes stay on this phone (`codriver.fixes`). **Remove my fix** undoes one.
+- **Settings → Grade calibration** (Tighter / As measured / Faster) shifts every numbered call by one grade. Corners you fixed keep your grade. The hint under it averages your fixes and suggests a setting, e.g. "calls are on average 0.8 grade too fast — suggested: Tighter".
+
+## Ghost lap
+
+Your best run is recorded as a trace of (time, distance), roughly every 5 m or every second. On a circuit, your best **lap** is kept, timed from the line. Next time:
+- a translucent **ghost car** drives your best on the map
+- the stats strip shows the **live gap**: green **−1.2 s** when you're ahead, red **+0.8 s** when you're behind
+
+On a circuit, your best lap chases you from the next lap of the same race. A ghost is only replaced by a faster one. Ghosts are stored per route (`codriver.ghosts`).
+
+## Your position
+
+Your position is always on the map, not only while driving. It shows a blue dot with a GPS-accuracy circle when you're standing still, and an arrow when you're moving. **◎** centres the map on you. While driving, that button switches between heading-up and north-up as before.
+
 ## Race mode
 
 Start gives a 3-2-1-GO countdown with beeps. The race clock (top right of the note panel) starts on GO. In simulation the car waits on the line until GO.

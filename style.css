@@ -218,3 +218,16 @@ h3.new-head { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 
 /* distance as big as the call, right under it */
 #notepanel #noteDist { font-size: clamp(44px, 14vw, 76px); font-weight: 900; line-height: 1; letter-spacing: -1px; margin-top: 4px; font-variant-numeric: tabular-nums; }
 #notepanel #glyph { width: min(36vw, 18vh, 150px); height: min(36vw, 18vh, 150px); }
+
+/* fix a call */
+.fix-btn { position: absolute; top: 10px; right: 10px; border: 1px solid var(--line); background: #0d0f12cc; border-radius: 12px; padding: 8px 12px; font-weight: 800; font-size: 14px; color: var(--ink); }
+.fix-grid button { font-size: 16px; padding: 12px 14px; text-transform: capitalize; }
+/* ghost gap */
+#delta { font: 800 20px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--dim); }
+#delta.ahead { color: var(--go); }
+#delta.behind { color: var(--warn); }
+.ghost-marker svg { width: 28px; height: 28px; fill: #ffffff; opacity: .45; stroke: #000; stroke-width: 2; }
+/* you, when standing still */
+.me-marker .dot { display: none; }
+.me-marker.still svg { display: none; }
+.me-marker.still .dot { display: block; width: 18px; height: 18px; margin: 8px; border-radius: 50%; background: #2f8bff; border: 3px solid #fff; box-shadow: 0 0 0 6px #2f8bff33, 0 2px 6px #000a; }

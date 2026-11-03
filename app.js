@@ -2,7 +2,7 @@ import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade
 import { RouteTracker, CallScheduler, DriveSim } from './navcore.js';
 import { buildStage } from './sample-route.js';
 import { specToHash, hashToSpec } from './share.js';
-import { Race, fmtRaceTime, routeSvgPath } from './race.js';
+import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
@@ -12,10 +12,14 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, labels: 'off', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
+// your corrections to calls ("that call was wrong"), pinned by location, on this phone
+let fixes = [];
+try { fixes = JSON.parse(localStorage.getItem('codriver.fixes') || '[]'); } catch {}
+const saveFixes = () => { try { localStorage.setItem('codriver.fixes', JSON.stringify(fixes)); } catch {} };
 try { recce = JSON.parse(localStorage.getItem('codriver.recce') || '[]'); } catch {}
 const saveRecce = () => { try { localStorage.setItem('codriver.recce', JSON.stringify(recce)); } catch {} };
 const saveSettings = () => { try { localStorage.setItem('codriver.settings', JSON.stringify(settings)); } catch {} };
@@ -55,10 +59,19 @@ function setRotation(deg) {
   $('map').style.transform = `rotate(${S.rot}deg)`;
 }
 
-navigator.geolocation?.getCurrentPosition((p) => {
-  if (!S.route) map.setView([p.coords.latitude, p.coords.longitude], 13);
-  S.fix = { lat: p.coords.latitude, lon: p.coords.longitude };
-}, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+// Your position is always on the map (not just while driving). Navigation has its own GPS feed.
+let firstFix = true;
+navigator.geolocation?.watchPosition((p) => {
+  if (S.nav) return;
+  const c = p.coords, f = { lat: c.latitude, lon: c.longitude, heading: c.heading, speed: c.speed, accuracy: c.accuracy };
+  S.fix = f;
+  const moving = f.speed != null && f.speed > 1 && f.heading != null && !isNaN(f.heading);
+  drawMe(f.lat, f.lon, moving ? f.heading : null);
+  if (!S.accCircle) S.accCircle = L.circle([f.lat, f.lon], { radius: f.accuracy || 20, color: '#4aa3ff', weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
+  else S.accCircle.setLatLng([f.lat, f.lon]).setRadius(f.accuracy || 20);
+  if (firstFix && !S.route) map.setView([f.lat, f.lon], 15);
+  firstFix = false;
+}, () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
 
 // ---------- helpers ----------
 function toast(msg, ms = 2600) {
@@ -285,7 +298,7 @@ async function planMode(base, mode, noToll = false) {
 function setRoute(r, { fit = true } = {}) {
   const gen = generatePaceNotes(r.points, {
     steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off',
-    elevation: r.elevation, recce, cameras: settings.cams === 'on' ? r.cameras : undefined,
+    elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
   });
   S.route = { ...r, ...gen };
   if (!r.elevation && !r.elevTried) { S.route.elevTried = true; addElevation(S.route); }
@@ -607,7 +620,7 @@ $('btnNotes').onclick = () => {
 $('notesList').addEventListener('click', (e) => {
   const li = e.target.closest('li'); if (!li) return;
   const n = S.route.notes[+li.dataset.i];
-  openRecce({ lat: n.lat, lon: n.lon, note: n });
+  openFix(n);
 });
 
 // ---------- recce picker ----------
@@ -686,12 +699,14 @@ function applySettings() {
 applySettings();
 
 // ---------- me marker ----------
-const meIcon = L.divIcon({ className: 'me-marker', iconSize: [34, 34], html: '<svg viewBox="0 0 40 40"><path d="M20 3 L34 35 L20 27 L6 35 Z"/></svg>' });
+const meIcon = L.divIcon({ className: 'me-marker', iconSize: [34, 34], html: '<svg viewBox="0 0 40 40"><path d="M20 3 L34 35 L20 27 L6 35 Z"/></svg><i class="dot"></i>' });
+// arrow when we know which way you're going, a blue dot when standing still
 function drawMe(lat, lon, heading) {
   if (!S.meMarker) S.meMarker = L.marker([lat, lon], { icon: meIcon, interactive: false, zIndexOffset: 1000 }).addTo(map);
   S.meMarker.setLatLng([lat, lon]);
-  const svg = S.meMarker.getElement()?.querySelector('svg');
-  if (svg) svg.style.transform = `rotate(${heading}deg)`;
+  const el = S.meMarker.getElement(), svg = el?.querySelector('svg');
+  el?.classList.toggle('still', heading == null);
+  if (svg && heading != null) svg.style.transform = `rotate(${heading}deg)`;
 }
 
 // ---------- glyph ----------
@@ -781,12 +796,13 @@ function onFix(f) {
   }
   S.lastS = loc.s;
   if (S.race) for (const e of S.race.update(now, sNow, S.speed)) onRaceEvent(e, now);
+  if (S.race && S.nav) paintGhost(now, sNow);
   if (!S.nav) return; // the race just finished
 
   // the next call waits until the current one has finished (it'll still come before its corner,
   // or be dropped if the corner has already gone)
   const call = S.offCount || isTalking() ? null : S.sched.update(sNow, S.speed);
-  if (call) { speak(call.text); $('lastCall').textContent = '“' + call.text + '”'; }
+  if (call) { speak(call.text); $('lastCall').textContent = '“' + call.text + '”'; S.lastCalled = S.sched.noteAt(call.to); }
 
   // screen
   $('speed').textContent = Math.round(kmh(S.speed));
@@ -835,6 +851,7 @@ function onRaceEvent(e) {
     if (left === 1) msg += ' Last lap!';
     if (left !== 0) speak(msg);
   } else if (e.type === 'finish') finishRace(e.result);
+  if (e.type === 'lap') { const tr = S.race.lapTraces.at(-1); if (tr) { const g = { ms: e.ms, trace: compressTrace(tr) }; if (saveGhost(g)) { S.ghostSaved = true; S.ghost = g; } } } // your best lap so far chases you from the next lap
 }
 
 function followCam(lat, lon) {
@@ -876,6 +893,7 @@ function startNav() {
   $('notepanel').hidden = false;
   $('btnGo').textContent = 'Stop'; $('btnGo').classList.add('stop');
   $('btnRoute').textContent = '＋ Note';
+  setTimeout(paintCompass); // ▲/N while driving
   $('routeChip').hidden = true;
   map.dragging[S.headingUp ? 'disable' : 'enable']();
   S.tracker = new RouteTracker(S.route.samples, S.route.loop);
@@ -885,6 +903,10 @@ function startNav() {
   $('lapInfo').hidden = !S.route.loop; $('lapInfo').textContent = S.route.loop ? 'Waiting for GO' : '';
   S.race = new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1 });
   $('raceClock').textContent = '0:00.0';
+  S.lastCalled = null; S.ghostSaved = false;
+  S.ghost = loadGhost(); $('delta').textContent = S.ghost ? 'ghost ready' : ''; $('delta').className = '';
+  S.ghostMarker?.remove(); S.ghostMarker = null;
+  S.accCircle?.remove(); S.accCircle = null; // the GPS-accuracy circle is for when you're not driving
   S.clockTimer = setInterval(() => { if (S.race) $('raceClock').textContent = fmtRaceTime(S.race.elapsed(Date.now())); }, 100);
   keepAwake();
   unlockAudio();
@@ -939,6 +961,7 @@ function countdown(go) {
 
 function stopNav() {
   S.nav = false;
+  S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
   clearInterval(S.clockTimer); S.clockTimer = null;
   if (S.watch != null) navigator.geolocation.clearWatch(S.watch);
@@ -949,14 +972,20 @@ function stopNav() {
   $('notepanel').hidden = true;
   $('btnGo').textContent = 'Start'; $('btnGo').classList.remove('stop');
   $('btnRoute').textContent = 'Route';
+  setTimeout(paintCompass); // ◎ (centre on me) when not driving
   if (S.route) paintSummary();
   setRotation(0); map.dragging.enable();
 }
 
 $('btnGo').onclick = () => (S.nav ? stopNav() : startNav());
 map.on('dragstart', () => { if (S.nav) S.follow = false; });
-const paintCompass = () => { $('btnCompass').textContent = S.headingUp ? '▲' : 'N'; $('btnCompass').classList.toggle('on', S.follow && S.nav); };
+const paintCompass = () => { $('btnCompass').textContent = !S.nav ? '◎' : S.headingUp ? '▲' : 'N'; $('btnCompass').classList.toggle('on', S.follow && S.nav); };
 $('btnCompass').onclick = () => {
+  if (!S.nav) { // not driving: centre on where you are
+    if (S.fix) map.setView([S.fix.lat, S.fix.lon], Math.max(map.getZoom(), 15));
+    else toast('Waiting for GPS…');
+    return;
+  }
   if (S.nav && !S.follow) S.follow = true;
   else S.headingUp = !S.headingUp;
   if (S.nav) map.dragging[S.headingUp ? 'disable' : 'enable']();
@@ -1009,6 +1038,7 @@ $('chipName').onclick = () => {
 function pbKey() { return 'pb|' + specToHash(S.route.spec, { loop: S.route.loop }) + '|' + (S.route.loop ? settings.laps : 1); }
 function finishRace(res) {
   const R = S.route, name = R.spec?.name || '';
+  const newGhost = !R.loop && res.ghost ? saveGhost(res.ghost) : false;
   let pbs = {}; try { pbs = JSON.parse(localStorage.getItem('codriver.pb') || '{}'); } catch {}
   const key = pbKey(), prev = pbs[key], isPb = !prev || res.ms < prev;
   if (isPb) { pbs[key] = res.ms; try { localStorage.setItem('codriver.pb', JSON.stringify(pbs)); } catch {} }
@@ -1025,6 +1055,7 @@ function finishRace(res) {
   $('resTime').textContent = fmtRaceTime(res.ms);
   $('resPb').textContent = isPb ? (prev ? `New personal best! (was ${fmtRaceTime(prev)})` : 'First run — personal best set') : `Personal best ${fmtRaceTime(prev)} (+${fmtRaceTime(res.ms - prev)})`;
   $('resPb').classList.toggle('pb', isPb);
+  if (newGhost || S.ghostSaved) $('resPb').textContent += ' · 👻 your best is now the ghost to beat';
   const u = settings.units === 'imperial' ? 'mph' : 'km/h';
   const cells = [
     ['Average speed', `${Math.round(kmh(res.avg))} ${u}`],
@@ -1382,3 +1413,87 @@ $('filterRow').addEventListener('click', async (e) => {
   S.busyMode = false;
 });
 $('chipOpts').onclick = () => openSheet('routeSheet');
+
+// ---------- ghost lap ----------
+const ghostKey = () => 'ghost|' + specToHash(S.route.spec, { loop: S.route.loop });
+function loadGhost() {
+  try { return JSON.parse(localStorage.getItem('codriver.ghosts') || '{}')[ghostKey()] || null; } catch { return null; }
+}
+// keep the ghost only if it's faster than the one we have
+function saveGhost(g) {
+  if (!g?.trace?.length) return false;
+  let all = {}; try { all = JSON.parse(localStorage.getItem('codriver.ghosts') || '{}'); } catch {}
+  const k = ghostKey(), old = all[k];
+  if (old && old.ms <= g.ms) return false;
+  all[k] = g;
+  try { localStorage.setItem('codriver.ghosts', JSON.stringify(all)); } catch { return false; }
+  return true;
+}
+function paintGhost(now, sNow) {
+  const g = S.ghost, seg = S.race.segment(now, sNow);
+  if (!g || !seg) return;
+  const d = ghostDelta(g.trace, seg.elapsed, seg.dist);
+  if (d != null) {
+    $('delta').textContent = (d > 0 ? '+' : '−') + (Math.abs(d) / 1000).toFixed(1) + ' s';
+    $('delta').className = d > 0 ? 'behind' : 'ahead';
+  }
+  // the ghost car: where your best run was at this moment
+  const gd = ghostDistAt(g.trace, seg.elapsed);
+  if (gd == null) return;
+  const len = S.route.total, segS = sNow - seg.dist;
+  let s = segS + gd; if (S.route.loop) s = ((s % len) + len) % len;
+  const sm = S.route.samples, p = sm[Math.max(0, Math.min(sm.length - 1, Math.round(s / (sm[1].s - sm[0].s))))];
+  if (!S.ghostMarker) S.ghostMarker = L.marker([p.lat, p.lon], { icon: L.divIcon({ className: 'ghost-marker', iconSize: [30, 30], html: '<svg viewBox="0 0 40 40"><path d="M20 3 L34 35 L20 27 L6 35 Z"/></svg>' }), interactive: false, zIndexOffset: 900 }).addTo(map);
+  else S.ghostMarker.setLatLng([p.lat, p.lon]);
+}
+
+// ---------- fix a call ----------
+let fixTarget = null;
+const fixWords = (n, g) => (g === 'H' ? `Hairpin ${n.dir}` : g === 'F' ? `Flat ${n.dir}` : `${n.dir[0].toUpperCase() + n.dir.slice(1)} ${g}`);
+function openFix(n) {
+  if (!n) return toast('No call to fix yet');
+  fixTarget = n;
+  const label = n.label || n.text || '';
+  $('fixWhat').textContent = `Called: “${label}”` + (n.fixed ? ' (already fixed by you)' : '');
+  const cornerish = (n.kind === 'corner' || n.kind === 'junction') && n.dir;
+  $('fixGrades').innerHTML = cornerish
+    ? ['H', 1, 2, 3, 4, 5, 6, 'F'].map((g) => `<button data-g="${g}">${fixWords(n, g)}</button>`).join('') +
+      `<button data-shape="square">Square ${n.dir}</button><button data-shape="acute">Acute ${n.dir}</button>`
+    : '<p class="fine">This isn\'t a corner — you can remove it, or add recce words.</p>';
+  $('fixHead').hidden = !cornerish;
+  $('fixUndo').hidden = !n.fixed;
+  openSheet('fixSheet');
+}
+function saveFix(fx) {
+  const n = fixTarget;
+  fixes = fixes.filter((f) => f.id !== n.fixed && segLen([f.lat, f.lon], [n.lat, n.lon]) > 15); // replaces an older fix here
+  fixes.push({ id: Date.now().toString(36), lat: n.lat, lon: n.lon, was: typeof n.grade === 'number' ? n.grade : null, ...fx });
+  saveFixes(); $('fixSheet').hidden = true;
+  regen(fx.none ? 'Removed — this corner won’t be called again' : `Saved — next time: ${fx.shape ? `${fx.shape} ${n.dir}` : fixWords(n, fx.grade).toLowerCase()}`);
+  paintCal();
+}
+$('fixGrades').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !fixTarget) return;
+  if (b.dataset.shape) return saveFix({ shape: b.dataset.shape });
+  const g = b.dataset.g; saveFix({ grade: g === 'H' || g === 'F' ? g : +g });
+});
+$('fixNone').onclick = () => fixTarget && saveFix({ none: true });
+$('fixUndo').onclick = () => {
+  fixes = fixes.filter((f) => f.id !== fixTarget.fixed); saveFixes();
+  $('fixSheet').hidden = true; regen('Your fix was removed'); paintCal();
+};
+$('fixRecce').onclick = () => { const n = fixTarget; $('fixSheet').hidden = true; openRecce({ lat: n.lat, lon: n.lon, note: n }); };
+// while driving: fix the call that was just made (or the one coming up)
+$('fixBtn').onclick = () => openFix(S.lastCalled || S.sched?.upcoming(S.route.loop ? S.sU : S.lastOnRouteS || 0)?.note);
+
+// calibration: your fixes tell us if the grades run fast or slow for you
+function paintCal() {
+  const d = fixes.filter((f) => typeof f.grade === 'number' && typeof f.was === 'number').map((f) => f.grade - f.was);
+  if (!d.length) { $('calHint').textContent = 'Fix a few calls while driving and this will suggest a setting.'; return; }
+  const avg = d.reduce((a, b) => a + b, 0) / d.length, sug = Math.max(-1, Math.min(1, Math.round(avg)));
+  $('calHint').textContent = `From your ${d.length} fix${d.length > 1 ? 'es' : ''}: calls are on average ${Math.abs(avg).toFixed(1)} grade ${avg < 0 ? 'too fast' : 'too slow'}` +
+    (sug !== +settings.cal ? ` — suggested: ${sug < 0 ? 'Tighter' : sug > 0 ? 'Faster' : 'Normal'}` : ' — your setting matches');
+}
+bindSeg('setCal', 'cal');
+$('setCal').addEventListener('click', () => regen(settings.cal === '-1' ? 'Calls one grade tighter' : settings.cal === '1' ? 'Calls one grade faster' : 'Calls as measured'));
+paintCal();

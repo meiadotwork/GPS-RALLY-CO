@@ -499,9 +499,46 @@ function sampleAt(samples, s, step) {
   return samples[Math.max(0, Math.min(samples.length - 1, Math.round(s / step)))];
 }
 
+// Grade calibration: shift every numbered call by offset (−1 = call tighter, +1 = call faster), 1..6.
+const shiftGrade = (g, off) => (typeof g === 'number' && off ? Math.max(1, Math.min(6, g + off)) : g);
+
+/**
+ * Your corrections: [{ id, lat, lon, grade?: 1..6|'H'|'F', shape?: 'square'|'acute', none?: true }].
+ * A fix applies to the corner (or junction) within 25 m of where it was made, on any route that passes.
+ */
+function applyFixes(notes, samples, opt) {
+  const off = opt.gradeOffset || 0;
+  for (const fx of opt.fixes || []) {
+    let best = null, bd = 25;
+    for (const n of notes) {
+      if (n.kind !== 'corner' && n.kind !== 'junction') continue;
+      const d = segLen([fx.lat, fx.lon], [n.lat, n.lon]);
+      if (d < bd) { bd = d; best = n; }
+    }
+    if (!best) continue;
+    best.fixed = fx.id;
+    if (fx.none) { best.removed = true; continue; }
+    best.kind = 'corner'; delete best.text; // a fixed junction is called like a corner
+    if (fx.shape) { best.shape = fx.shape; best.grade = 1; }
+    else { delete best.shape; delete best.chicane; best.grade = fx.grade; }
+    best.kink = fx.grade === 'F' && best.kink;
+    best.mods = best.mods.filter((m) => !['tightens', 'opens', 'short', 'late'].includes(m));
+    best.exitGrade = null;
+  }
+  for (let i = notes.length - 1; i >= 0; i--) if (notes[i].removed) notes.splice(i, 1);
+  if (off) for (const n of notes) {
+    if (n.kind !== 'corner' || n.fixed) continue;
+    n.grade = shiftGrade(n.grade, off);
+    n.exitGrade = shiftGrade(n.exitGrade, off);
+  }
+}
+
 function decorate(notes, samples, kappa, opt) {
   const step = opt.step;
   const inCorner = (s, pad = 10) => notes.find((n) => n.kind === 'corner' && s >= n.sStart - pad && s <= n.sEnd + pad);
+
+  // your own corrections ("that call was wrong"), pinned by location, then the overall calibration
+  applyFixes(notes, samples, opt);
 
   // crests & dips
   for (const f of verticalFeatures(opt.elevation)) {
