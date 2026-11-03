@@ -1,0 +1,12 @@
+# not part of the website
+.git
+node_modules
+tests
+scripts
+package.json
+package-lock.json
+bun.lockb
+README.md
+wrangler.jsonc
+.assetsignore
+.gitignore

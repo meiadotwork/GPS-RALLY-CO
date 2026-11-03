@@ -2,7 +2,7 @@
 
 A navigation app for the phone browser that gives every instruction as a rally co-driver pace note. Nothing to install: open the site over **HTTPS** (live on Cloudflare Pages), because phones only allow GPS and Wake Lock on secure pages.
 
-**Hosting:** Cloudflare Pages deploys this repository's `main` branch automatically, with no build step. The site is the repository root.
+**Hosting:** a Cloudflare Worker deploys this repository's `main` branch automatically (`npx wrangler deploy`, no build step). `wrangler.jsonc` serves the repository root as static files, and `.assetsignore` keeps tests, scripts and config off the site. Live at https://gps-rally-co.meiagimenes.workers.dev
 
 ## Files
 

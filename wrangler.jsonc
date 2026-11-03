@@ -1,0 +1,10 @@
+// Cloudflare Worker that serves the app as static files (no build step).
+// The name must match the Worker in the Cloudflare dashboard.
+{
+  "name": "gps-rally-co",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./",
+    "not_found_handling": "single-page-application"
+  }
+}
