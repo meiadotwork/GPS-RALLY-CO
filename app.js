@@ -164,7 +164,7 @@ async function fetchFiltered(coords, startBearing, alternatives, noToll) {
 // droppable: Set of points the APP added (Smooth/Explore/round pins). Your own checkpoints are never
 // dropped or reordered; if one makes the route loop round a block it's kept and reported in loopWarn.
 async function osrmRoute(coords, startBearing, mode = 'fastest', noToll = false, droppable = null) {
-  const smooth = settings.smooth !== 'off';
+  const smooth = mode !== 'exact' && settings.smooth !== 'off'; // exact: the routing service's own way through your points, nothing swapped
   const wantAlt = coords.length === 2 && (smooth || mode === 'shortest');
   let j = await fetchFiltered(coords, startBearing, wantAlt, noToll);
   // with the toll filter on, only consider the least-toll routes
@@ -443,8 +443,10 @@ async function buildRoute(spec, loop = S.loop, opts) {
     if (spec.vehicle == null) spec = { ...spec, vehicle: settings.vehicle || 'car' };
     VEHICLE = spec.vehicle;
     // on a bike "fastest" means the shortest way — any direction
-    const mode = spec.vehicle === 'bike' && (!spec.mode || spec.mode === 'fastest') ? 'shortest' : spec.mode || 'fastest', noToll = !!spec.noToll;
-    const roundOn = loop && spec.via.length === 2 && settings.round !== 'off';
+    // no route type chosen = EXACT: through your points, in your order, nothing optimised or added.
+    // The types (Fastest, Shortest, Smooth, Explore) only kick in when you pick one.
+    const mode = spec.vehicle === 'bike' && spec.mode === 'fastest' ? 'shortest' : spec.mode || 'exact', noToll = !!spec.noToll;
+    const roundOn = mode !== 'exact' && loop && spec.via.length === 2 && settings.round !== 'off';
     const picksOwn = roundOn || mode === 'smooth' || mode === 'explore' || (mode === 'shortest' && (loop || spec.via.length > 2));
     if (picksOwn && !spec.planned) {
       // the route type chooses its own way; remember your points (base) so it can be re-run
@@ -459,11 +461,11 @@ async function buildRoute(spec, loop = S.loop, opts) {
         r.info = `${t} tight corner${t === 1 ? '' : 's'}`;
       }
     } else {
-      r = await osrmRoute(coords, null, mode === 'shortest' ? 'shortest' : 'fastest', noToll);
+      r = await osrmRoute(coords, null, mode === 'shortest' || mode === 'exact' ? mode : 'fastest', noToll);
     }
     if (r.tollNote) toast(r.tollNote, 5000);
     // a checkpoint of yours that makes the route loop round a block: keep it, flag it, say which one
-    r.warnPts = (r.loopWarn || []).map((p) => p.slice());
+    r.warnPts = mode === 'exact' ? [] : (r.loopWarn || []).map((p) => p.slice()); // exact: going round a block is your choice
     if (r.warnPts.length) {
       const nums = r.warnPts.map((p) => spec.via.findIndex((q) => q[0] === p[0] && q[1] === p[1])).filter((i) => i > 0);
       if (nums.length) toast(`Checkpoint ${nums.join(', ')} makes the route loop round a block — it's probably on a side street or the far side of the road. Drag it onto the road you mean (✎ Edit points).`, 7000);
@@ -1424,7 +1426,7 @@ $('plDelete').onclick = () => {
 drawPlaces(); paintPlaceChips();
 
 // ---------- route options: fastest / shortest / no tolls / smooth / explore ----------
-const MODES = { fastest: '⚡ Fastest', shortest: '📏 Shortest', smooth: '〰️ Smooth', explore: '🎲 Explore' };
+const MODES = { exact: '📍 Exactly my way', fastest: '⚡ Fastest', shortest: '📏 Shortest', smooth: '〰️ Smooth', explore: '🎲 Explore' };
 function paintModes() {
   const sp = S.route?.spec, ok = sp && !sp.raw;
   $('vehRow').hidden = !ok; $('vehHead').hidden = !ok; $('bikeNote').hidden = !(ok && sp.vehicle === 'bike');
@@ -1433,19 +1435,20 @@ function paintModes() {
   $('modeRow').hidden = !ok;
   if (!ok) return;
   const bike = sp.vehicle === 'bike';
-  let cur = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'fastest'; if (bike && cur === 'fastest') cur = 'shortest';
+  let cur = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'exact'; if (bike && cur === 'fastest') cur = 'shortest';
+  const exact = cur === 'exact';
   const info = S.modeInfo || {};
   const nt = !!sp.noToll || sp.mode === 'notoll';
   const roundable = S.route.loop && (sp.base || sp.via).length === 2;
   const f = (key, on, label, sub) => `<button data-f="${key}" class="filter ${on ? 'on' : ''}">${on ? '✓ ' : ''}${label}<small>${sub}</small></button>`;
   $('filterRow').innerHTML =
     f('toll', nt, '💸 Avoid tolls', nt ? 'on — for every route' : 'off') +
-    (roundable ? f('round', settings.round !== 'off', '🔁 No repeated roads', settings.round !== 'off' ? (info[cur]?.info?.includes('repeated') ? info[cur].info : 'round circuit') : 'off') : '') +
-    f('tidy', settings.smooth !== 'off', '🧹 Skip loops & U-turns', settings.smooth !== 'off' ? 'on — only points the app adds' : 'off');
+    (roundable && !exact ? f('round', settings.round !== 'off', '🔁 No repeated roads', settings.round !== 'off' ? (info[cur]?.info?.includes('repeated') ? info[cur].info : 'round circuit') : 'off') : '') +
+    (exact ? '' : f('tidy', settings.smooth !== 'off', '🧹 Skip loops & U-turns', settings.smooth !== 'off' ? 'on — only points the app adds' : 'off'));
   $('modeRow').innerHTML =
     Object.entries(MODES).filter(([m]) => !(bike && m === 'fastest')).map(([m, label]) => { // a bike always takes the shortest way
       const i = info[m];
-      const sub = i ? `${fmtDist(i.dist)} · ${fmtDur(i.dur)}${i.info ? ' · ' + i.info : ''}` : m === 'explore' && cur === 'explore' ? 'tap for another' : '';
+      const sub = m === 'exact' && !i ? 'your points, your order' : i ? `${fmtDist(i.dist)} · ${fmtDur(i.dur)}${i.info ? ' · ' + i.info : ''}` : m === 'explore' && cur === 'explore' ? 'tap for another' : '';
       return `<button data-m="${m}" class="${m === cur ? 'on' : ''}">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
     }).join('');
   $('modeRow').scrollLeft = 0; // keep the filter and first options in view
@@ -1453,13 +1456,13 @@ function paintModes() {
 $('modeRow').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   const m = btn?.dataset.m; if (!m || !S.route?.spec || S.busyMode) return;
-  const sp = S.route.spec, cur = sp.mode || 'fastest';
+  const sp = S.route.spec, cur = sp.mode || 'exact';
   if (m === cur && m !== 'explore') return;
   const base = sp.base || sp.via; // your points (A, any in-between, B — or the circuit's points)
   S.busyMode = true;
   toast(m === 'smooth' ? 'Looking for the smoothest way (checking several routes)…' : m === 'explore' ? 'Rolling the dice…' : `Routing: ${MODES[m]}…`, 9000);
   try {
-    await buildRoute({ via: base, mode: m, name: sp.name, savedId: sp.savedId, noToll: !!sp.noToll }, S.route.loop, { fit: false });
+    await buildRoute({ via: base, mode: m === 'exact' ? undefined : m, name: sp.name, savedId: sp.savedId, noToll: !!sp.noToll }, S.route.loop, { fit: false });
     fitVisible(S.routeLayer.getBounds(), 200, 130);
     const i = S.modeInfo?.[m];
     toast(`${MODES[m]}: ${fmtDist(S.route.total)} · ~${fmtDur(routeSeconds())}${i?.info ? ' · ' + i.info : ''}`);
@@ -1472,7 +1475,7 @@ async function toggleTolls() {
   if (!S.route?.spec || S.busyMode) return;
   const sp = S.route.spec, nt = !(sp.noToll || sp.mode === 'notoll');
   settings.noToll = nt; saveSettings();
-  const mode = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'fastest';
+  const mode = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'exact';
   // smooth re-plans from A→B under the new filter; explore keeps its points; others keep yours
   // re-plan shortest/smooth from your points under the new filter; explore keeps its random points
   const via = (mode === 'smooth' || mode === 'shortest') && sp.base ? sp.base : sp.via;
@@ -1498,7 +1501,7 @@ $('filterRow').addEventListener('click', async (e) => {
   toast(k === 'round' ? (settings.round === 'on' ? 'Finding a round circuit with no repeated roads…' : 'Repeated roads allowed…') : 'Re-planning…', 9000);
   try {
     await buildRoute({ ...sp, via: sp.base || sp.via, planned: false }, S.route.loop, { fit: false });
-    const i = S.modeInfo?.[sp.mode || 'fastest'];
+    const i = S.modeInfo?.[sp.mode || 'exact'];
     toast(`${fmtDist(S.route.total)}${S.route.loop ? ' lap' : ''} · ~${fmtDur(routeSeconds())}${i?.info ? ' · ' + i.info : ''}`);
   } catch (err) { toast('Routing failed: ' + err.message); }
   S.busyMode = false;
@@ -1868,7 +1871,7 @@ $('vehRow').addEventListener('click', async (e) => {
   S.busyMode = true;
   toast(v === 'bike' ? '🚲 Shortest way for a bike — any direction…' : '🚗 Car route…', 8000);
   try {
-    await buildRoute({ ...sp, via: sp.base || sp.via, planned: false, vehicle: v, mode: v === 'bike' ? 'fastest' : sp.mode }, S.route.loop, { fit: false });
+    await buildRoute({ ...sp, via: sp.base || sp.via, planned: false, vehicle: v, mode: sp.mode }, S.route.loop, { fit: false });
     toast(`${v === 'bike' ? '🚲' : '🚗'} ${fmtDist(S.route.total)}${S.route.loop ? ' lap' : ''} · ~${fmtDur(routeSeconds())}`);
   } catch (err) { toast('Routing failed: ' + err.message); }
   S.busyMode = false;

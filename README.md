@@ -90,8 +90,10 @@ Tap a place to see:
 
 Route (or ⚙ on the route chip) opens one page with everything about the current route:
 - name, distance and time
-- **route type**: ⚡ Fastest · 📏 Shortest · 〰️ Smooth · 🎲 Explore
-- **filters**: 💸 Avoid tolls · 🔁 No repeated roads (circuits) · 🧹 Skip loops & U-turns
+- **route type**: **📍 Exactly my way** (default) · ⚡ Fastest · 📏 Shortest · 〰️ Smooth · 🎲 Explore
+- **filters**: 💸 Avoid tolls · 🔁 No repeated roads (circuits) · 🧹 Skip loops & U-turns (the last two only appear when you pick an optimising type)
+
+**📍 Exactly my way is the default for every new route and lap.** The route goes through your points, in the order you put them, along the roads that connect them, and that's all. The app adds no hidden points, doesn't swap in a "smoother" alternative, doesn't plan a round circuit, and doesn't warn about going round a block (on a lap round your neighbourhood, that's the point). The optimising types only run when you tap one, and **📍 Exactly my way** takes you back. Your choice is saved with the route.
 - **circuit**: lap circuit and number of laps
 - **drive**: save, edit points, share, stage notes, simulate, start, cancel
 
