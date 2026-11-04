@@ -234,6 +234,17 @@ Places, routes, recce notes, fixes, ghosts and best times are stored in the brow
 - Names are typed in an in-app box, not the browser's `prompt()`, which some Home Screen apps and in-app browsers block.
 - **Settings → Backup → Export** saves everything to `codriver-backup-YYYY-MM-DD.json` (on iPhone via the share sheet: Save to Files, AirDrop…). **Import** merges a backup back in: places, routes, notes and fixes by id, and ghosts and best times keeping the faster one. Use it to restore, or to move to another phone.
 
+## Looks (skins)
+
+**Settings → Look** picks the style. The app remembers your choice.
+- **👾 Arcade** (default): 8-bit pixel font, white pixel frames, chunky buttons.
+- **LCD**: an olive stopwatch-style screen with dark digits.
+- **Tripmeter**: a black box with glowing amber digits, like a rally instrument.
+- **Dot-matrix**: red LED dots, like a pit board.
+- **Classic**: the original look.
+
+The map and the route line are tinted to match.
+
 ## Time attack (circuits)
 
 On a lap circuit, **Route → Circuit → Start** has two choices:

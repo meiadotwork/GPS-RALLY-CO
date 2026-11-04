@@ -17,7 +17,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -497,7 +497,8 @@ function cancelRoute() {
 
 function drawRoute(fit) {
   S.routeLayer?.remove(); S.noteLayer?.remove();
-  S.routeLayer = L.polyline(S.route.points, { color: '#ffcc00', weight: 6, opacity: .85 }).addTo(map);
+  const routeColor = getComputedStyle(document.body).getPropertyValue('--route').trim() || '#ffcc00'; // follows the skin
+  S.routeLayer = L.polyline(S.route.points, { color: routeColor, weight: 6, opacity: .85 }).addTo(map);
   S.hitLayer?.remove();
   S.hitLayer = L.polyline(S.route.points, { weight: 30, opacity: 0, interactive: S.mode === 'edit' }).addTo(map).on('click', onRouteTap);
   S.noteLayer = L.layerGroup(S.route.notes.map((n) => {
@@ -703,6 +704,13 @@ function bindSeg(id, key) {
   paint();
 }
 bindSeg('setAhead', 'callAhead');
+bindSeg('setSkin', 'skin');
+$('setSkin').addEventListener('click', () => { applySkin(); if (S.route) drawRoute(false); });
+function applySkin() {
+  document.body.className = document.body.className.replace(/\bskin-\w+/g, '').trim();
+  if (settings.skin && settings.skin !== 'classic') document.body.classList.add('skin-' + settings.skin);
+}
+applySkin();
 bindSeg('setUnits', 'units');
 bindSeg('setFlats', 'flats');
 // Gentle-bend calls change the notes themselves: regenerate, and carry on from where we are.

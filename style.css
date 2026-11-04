@@ -297,3 +297,128 @@ body.map-full #notepanel :is(#noteSub, #noteNext, #lastCall, .np-stats, #fixBtn)
 body.map-full #bar { display: none; }
 #mapBack { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(22px + var(--safe-b)); z-index: 700; padding: 14px 22px; font-size: 18px; box-shadow: 0 4px 14px #000a; }
 #mapBack { white-space: nowrap; }
+
+/* ================= skins (Settings → Look) ================= */
+
+/* ============ shared: square, chunky, no blur ============ */
+body[class*="skin-"] #notepanel, body[class*="skin-"] #bar, body[class*="skin-"] #routeChip, body[class*="skin-"] .sheet { backdrop-filter: none; }
+body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: square; stroke-linejoin: bevel; }
+
+/* ============ 1. ARCADE — 8-bit pixel ============ */
+body.skin-arcade { --route: #ffd400; --bg: #000; --panel: #000; --ink: #fff; --dim: #8b8b9a; --accent: #ffd400; --go: #00e436; --warn: #ff004d; --line: #fff;
+  font-family: 'Press Start 2P', monospace; }
+body.skin-arcade #notepanel, body.skin-arcade #bar, body.skin-arcade #routeChip {
+  border: 0; border-radius: 0; background: #000;
+  box-shadow: 0 -4px 0 0 #fff, 0 4px 0 0 #fff, -4px 0 0 0 #fff, 4px 0 0 0 #fff; /* pixel frame */
+  margin: 4px; }
+body.skin-arcade #noteBig, body.skin-arcade #noteDist { font-family: 'Press Start 2P', monospace; letter-spacing: 0; line-height: 1.15; }
+body.skin-arcade #notepanel #noteBig { font-size: clamp(26px, 9vw, 44px); }
+body.skin-arcade #notepanel #noteDist { font-size: clamp(26px, 9vw, 44px); color: var(--accent); }
+body.skin-arcade #noteNext, body.skin-arcade #lastCall, body.skin-arcade .np-stats { font-size: 10px !important; line-height: 1.6; }
+body.skin-arcade .np-stats { border-top: 4px dotted #fff; }
+body.skin-arcade #raceClock { font-family: 'Press Start 2P', monospace; font-size: 16px !important; color: var(--go); }
+body.skin-arcade #glyph path { stroke: var(--accent); stroke-width: 12; }
+body.skin-arcade .pill, body.skin-arcade .round { border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 11px;
+  background: #2a2aff; color: #fff; box-shadow: inset -4px -4px 0 #0000a8, inset 4px 4px 0 #6b6bff; border: 0; }
+body.skin-arcade .pill.go { background: var(--go); color: #000; box-shadow: inset -4px -4px 0 #008751, inset 4px 4px 0 #9bff9b; }
+body.skin-arcade .pill.go.stop { background: var(--warn); color: #fff; box-shadow: inset -4px -4px 0 #7e2553, inset 4px 4px 0 #ff77a8; }
+body.skin-arcade #speed { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--accent); }
+body.skin-arcade #speedBox small { font-size: 8px; margin-top: 4px; }
+body.skin-arcade .leaflet-tile-pane { filter: grayscale(1) contrast(1.6) brightness(.55) !important; image-rendering: pixelated; }
+body.skin-arcade #fixBtn { border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 9px; }
+
+/* ============ 2. LCD — old stopwatch / tripmeter display ============ */
+body.skin-lcd { --bg: #1d2016; --panel: #2b2f26; --ink: #d7dcc8; --dim: #8a917a; --accent: #c3cda6; --go: #c3cda6; --warn: #e0583f; --line: #55594d; --route: #c3cda6;
+
+  font-family: 'VT323', monospace; }
+body.skin-lcd #notepanel, body.skin-lcd #routeChip { --ink: #1c2412; --dim: #4c573a; --accent: #1c2412; --warn: #7a1b0c; --line: #1c241255;
+  border-radius: 6px; border: 10px solid #2b2f26; outline: 2px solid #55594d;
+  background: linear-gradient(160deg, #c3cda6 0%, #aab58c 70%, #9da880 100%);
+  box-shadow: inset 0 3px 8px #0006, 0 6px 0 #111; }
+body.skin-lcd #noteBig, body.skin-lcd #noteDist { font-family: 'VT323', monospace; letter-spacing: 1px; }
+body.skin-lcd #notepanel #noteBig { font-size: clamp(54px, 17vw, 96px); line-height: .9; text-shadow: 2px 2px 0 #1c241233; }
+body.skin-lcd #notepanel #noteDist { font-size: clamp(54px, 17vw, 96px); line-height: .9; text-shadow: 2px 2px 0 #1c241233; }
+body.skin-lcd #noteNext, body.skin-lcd #lastCall, body.skin-lcd .np-stats { font-size: 20px !important; color: var(--ink); }
+body.skin-lcd #raceClock { font-family: 'VT323', monospace; font-size: 30px !important; color: var(--ink); }
+body.skin-lcd #glyph path { stroke: var(--ink); stroke-width: 11; filter: drop-shadow(2px 2px 0 #1c241233); }
+body.skin-lcd #bar { background: #2b2f26; border: 0; border-radius: 8px; box-shadow: 0 6px 0 #111, inset 0 2px 0 #55594d; }
+body.skin-lcd .pill, body.skin-lcd .round { border-radius: 4px; font-family: 'VT323', monospace; font-size: 22px; background: #44483d; color: #d7dcc8;
+  border: 0; box-shadow: 0 4px 0 #15170f; }
+body.skin-lcd .pill.go { background: #d7dcc8; color: #1c2412; }
+body.skin-lcd .pill.go.stop { background: #b8402c; color: #fff; }
+body.skin-lcd #speed { font-family: 'VT323', monospace; font-size: 40px; color: #c3cda6; }
+body.skin-lcd #speedBox small { color: #8a917a; font-size: 14px; }
+body.skin-lcd .leaflet-tile-pane { filter: grayscale(1) sepia(.6) hue-rotate(40deg) brightness(.5) contrast(1.3) !important; }
+body.skin-lcd #fixBtn { border-radius: 3px; background: #1c2412; color: #c3cda6; border: 0; font-family: 'VT323', monospace; font-size: 18px; }
+
+/* ============ 3. TRIPMETER — rally gadget, amber LEDs in a black box ============ */
+body.skin-trip { --route: #ffb000; --bg: #0a0a0a; --panel: #111; --ink: #ffb000; --dim: #a06a00; --accent: #ffb000; --go: #ffb000; --warn: #ff3b1f; --line: #2a2a2a;
+  font-family: 'Share Tech Mono', monospace; }
+body.skin-trip #notepanel, body.skin-trip #routeChip {
+  border-radius: 10px; border: 0; padding-top: 18px;
+  background: radial-gradient(circle at 10px 10px, #555 2px, #222 3px, transparent 4px), radial-gradient(circle at calc(100% - 10px) 10px, #555 2px, #222 3px, transparent 4px),
+    radial-gradient(circle at 10px calc(100% - 10px), #555 2px, #222 3px, transparent 4px), radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #555 2px, #222 3px, transparent 4px),
+    linear-gradient(#1b1b1b, #0d0d0d);
+  box-shadow: inset 0 0 0 2px #2c2c2c, inset 0 0 0 7px #0a0a0a, inset 0 0 0 8px #333, 0 6px 14px #000c; }
+body.skin-trip #noteBig, body.skin-trip #noteDist, body.skin-trip #raceClock, body.skin-trip #speed { font-family: 'Share Tech Mono', monospace;
+  text-shadow: 0 0 6px #ff9000, 0 0 18px #ff6a0066; }
+body.skin-trip #notepanel #noteBig { font-size: clamp(42px, 14vw, 76px); letter-spacing: 0; }
+body.skin-trip #notepanel #noteDist { font-size: clamp(42px, 14vw, 76px); background: #000; display: inline-block; padding: 0 14px; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px #3a2500; }
+body.skin-trip #noteNext, body.skin-trip #lastCall { color: #b37800; text-transform: uppercase; letter-spacing: 1px; }
+body.skin-trip .np-stats { border-top: 1px solid #2a2a2a; }
+body.skin-trip #raceClock { color: #ffb000; font-size: 26px !important; background: #000 !important; padding: 2px 8px !important; border-radius: 4px !important; }
+body.skin-trip #glyph path { stroke: #ffb000; stroke-width: 10; filter: drop-shadow(0 0 6px #ff9000); }
+body.skin-trip #bar { background: linear-gradient(#1b1b1b, #0d0d0d); border: 0; border-radius: 10px; box-shadow: inset 0 0 0 2px #2c2c2c, 0 6px 14px #000c; }
+body.skin-trip .pill, body.skin-trip .round { border-radius: 6px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; letter-spacing: 1px;
+  background: linear-gradient(#3a3a3a, #232323); color: #ddd; border: 0; box-shadow: 0 3px 0 #000, inset 0 1px 0 #555; }
+body.skin-trip .pill.go { background: linear-gradient(#ffbf2a, #e08f00); color: #1a0f00; box-shadow: 0 3px 0 #7a4b00, inset 0 1px 0 #ffe08a; }
+body.skin-trip .pill.go.stop { background: linear-gradient(#ff4a2a, #c22a10); color: #fff; box-shadow: 0 3px 0 #5c1205, inset 0 1px 0 #ff9a85; }
+body.skin-trip #speed { color: #ffb000; font-size: 36px; }
+body.skin-trip .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.45) contrast(1.4) sepia(.5) hue-rotate(-15deg) !important; }
+body.skin-trip #fixBtn { background: #000; color: #ffb000; border: 1px solid #3a2500; border-radius: 4px; font-family: 'Share Tech Mono', monospace; }
+
+/* ============ 4. DOT-MATRIX — red LED pit board / timing tower ============ */
+body.skin-dots { --route: #ff2a1a; --bg: #050505; --panel: #000; --ink: #ff2a1a; --dim: #8a1a12; --accent: #ff2a1a; --go: #19ff5a; --warn: #ffe100; --line: #2a0805;
+  font-family: 'DotGothic16', monospace; }
+body.skin-dots #notepanel, body.skin-dots #routeChip { border-radius: 0; border: 3px solid #1a1a1a; background: #000; position: fixed; }
+/* the LED grid: only on the big things, so the small text stays readable */
+body.skin-dots #glyph, body.skin-dots #noteBig, body.skin-dots #noteDist {
+  -webkit-mask: radial-gradient(circle, #000 1.6px, transparent 2px) 0 0 / 4px 4px; mask: radial-gradient(circle, #000 1.6px, transparent 2px) 0 0 / 4px 4px; }
+body.skin-dots #noteBig, body.skin-dots #noteDist, body.skin-dots #raceClock, body.skin-dots #speed { font-family: 'Silkscreen', monospace; font-weight: 700;
+  text-shadow: 0 0 8px #ff2a1a; }
+body.skin-dots #notepanel #noteBig { font-size: clamp(36px, 12vw, 66px); letter-spacing: 2px; }
+body.skin-dots #notepanel #noteDist { font-size: clamp(36px, 12vw, 66px); color: var(--warn); text-shadow: 0 0 8px #ffb800; }
+body.skin-dots #noteNext, body.skin-dots #lastCall, body.skin-dots .np-stats { color: #ff5a40; }
+body.skin-dots .np-stats { border-top: 3px solid #1a0402; }
+body.skin-dots #raceClock { color: var(--go); text-shadow: 0 0 8px #19ff5a; font-size: 24px !important; }
+body.skin-dots #glyph path { stroke: #ff2a1a; stroke-width: 12; filter: drop-shadow(0 0 6px #ff2a1a); }
+body.skin-dots #bar { background: #000; border: 3px solid #1a1a1a; border-radius: 0; }
+body.skin-dots .pill, body.skin-dots .round { border-radius: 0; font-family: 'Silkscreen', monospace; background: #1a0402; color: #ff2a1a; border: 2px solid #ff2a1a; }
+body.skin-dots .pill.go { background: #19ff5a; color: #000; border-color: #19ff5a; }
+body.skin-dots .pill.go.stop { background: #ff2a1a; color: #000; border-color: #ff2a1a; }
+body.skin-dots #speed { color: var(--warn); text-shadow: none; font: 400 34px/1 'DotGothic16', monospace; }
+body.skin-dots .leaflet-tile-pane { filter: grayscale(1) brightness(.35) contrast(1.5) !important; }
+body.skin-dots #fixBtn { border-radius: 0; background: #000; color: #ff2a1a; border: 2px solid #ff2a1a; font-family: 'Silkscreen', monospace; }
+
+/* sheets follow the skin */
+body.skin-arcade .sheet { background: #000; border-top: 4px solid #fff; border-radius: 0; }
+body.skin-arcade .sheet h2 { font-size: 15px; }
+body.skin-arcade .sheet label, body.skin-arcade .fine, body.skin-arcade .sheet small { font-size: 10px; line-height: 1.6; }
+body.skin-arcade .seg, body.skin-arcade .chips button, body.skin-arcade select, body.skin-arcade input { border-radius: 0; }
+body.skin-arcade .seg button { font-size: 10px; }
+body.skin-lcd .sheet { background: #24271f; }
+body.skin-trip .sheet { background: linear-gradient(#1b1b1b, #0d0d0d); }
+body.skin-trip .sheet h2 { text-transform: uppercase; letter-spacing: 2px; }
+body.skin-dots .sheet { background: #000; border-top: 3px solid #1a1a1a; border-radius: 0; }
+body.skin-dots .seg { border-radius: 0; }
+#setSkin { flex-wrap: wrap; }
+#setSkin button { min-width: 33%; }
+body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linejoin: round; }
+body.skin-lcd #notepanel, body.skin-lcd #routeChip { color: var(--ink); }
+body.skin-arcade #chipDist { font-size: 16px; line-height: 1.4; }
+body.skin-arcade #chipMeta, body.skin-arcade #chipName { font-size: 9px; line-height: 1.6; }
+body.skin-arcade #routeChip .pill { padding: 8px 10px; font-size: 10px; }
+body.skin-arcade #toast { font-size: 11px; line-height: 1.6; border-radius: 0; }
+body.skin-arcade #searchInput, body.skin-arcade #routeName { border-radius: 0; font-size: 11px; }
+body.skin-dots #toast, body.skin-trip #toast { border-radius: 0; }
