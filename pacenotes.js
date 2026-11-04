@@ -633,7 +633,7 @@ function decorate(notes, samples, kappa, opt) {
 
 // Quick direction changes: two or more short alternating bends linked "into".
 function chicanes(notes) {
-  const ok = (n) => n && n.kind === 'corner' && !n.chicane && !n.shape && n.grade !== 'H' && gradeNum(n.grade) >= 3 && n.angle <= 45 && !n.extra;
+  const ok = (n) => n && n.kind === 'corner' && !n.chicane && !n.shape && !n.fixed && n.grade !== 'H' && gradeNum(n.grade) >= 3 && n.angle <= 45 && !n.extra; // never merge your own calls
   const out = [];
   for (let i = 0; i < notes.length; i++) {
     let j = i;

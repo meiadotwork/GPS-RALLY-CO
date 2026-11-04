@@ -274,3 +274,5 @@ body.reviewing #toast { bottom: auto; top: calc(16px + var(--safe-t)); }
 #recInfo { text-align: center; font: 900 26px/1.2 ui-monospace, "SF Mono", Menlo, monospace; color: #ff5a3c; animation: recblink 1.4s infinite; }
 @keyframes recblink { 50% { opacity: .55; } }
 #recBar .pill.danger { background: var(--warn); color: #fff; }
+
+.add-pin { background: #b67cff; color: #fff; border: 3px solid #fff; border-radius: 50%; display: grid; place-items: center; font: 900 20px/1 system-ui; box-shadow: 0 2px 8px #000a; }

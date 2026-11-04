@@ -564,18 +564,21 @@ map.on('contextmenu', (e) => { // long-press
   if (S.nav || S.mode === 'edit' || S.mode === 'draw' || S.mode === 'review') return;
   const ll = [e.latlng.lat, e.latlng.lng];
   const el = document.createElement('div'); el.className = 'lp-pop';
-  el.innerHTML = '<button class="pill go" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
+  const onRoute = S.route && distToPolyline(S.route.points, ll) <= 30;
+  el.innerHTML = (onRoute ? '<button class="pill go" data-a="add">＋ Add a call here</button>' : '') +
+    '<button class="pill ' + (onRoute ? 'ghost' : 'go') + '" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
   const pop = L.popup({ closeButton: false, className: 'lp-wrap' }).setLatLng(e.latlng).setContent(el).openOn(map);
   el.onclick = (ev) => {
     const a = ev.target.dataset?.a; if (!a) return;
     map.closePopup(pop);
-    if (a === 'go') routeTo(ll); else if (a === 'park') openHunt(ll, 'this spot'); else addPlace(ll[0], ll[1]);
+    if (a === 'add') openAdd(ll); else if (a === 'go') routeTo(ll); else if (a === 'park') openHunt(ll, 'this spot'); else addPlace(ll[0], ll[1]);
   };
 });
 map.on('click', (e) => {
   if (S.nav) return;
   const ll = [e.latlng.lat, e.latlng.lng];
   if (S.mode === 'edit') return editAppend(ll);
+  if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
   if (S.mode === 'pick') { S.mode = 'idle'; routeTo(ll); }
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
@@ -1737,7 +1740,7 @@ function startReview() {
   setRotation(0); map.dragging.enable();
   drawRoute(false);
   reviewGo(0);
-  toast('◀ ▶ to check each call · tap a dot to jump to it · put the ⊕ where a call is missing and tap ＋ Add', 5000);
+  toast('◀ ▶ to check each call · tap a dot to jump to it · tap the route where a call is missing to add one', 5000);
 }
 function endReview() {
   S.mode = 'idle'; document.body.classList.remove('reviewing');
@@ -1778,23 +1781,35 @@ $('notesReview').onclick = startReview;
 // add a call where the app had none: at the ⊕ in the middle of the map
 let addAt = null;
 const addWords = (dir, g) => (g === 'H' ? `Hairpin ${dir}` : g === 'F' ? `Flat ${dir}` : g === 'square' || g === 'acute' ? `${g[0].toUpperCase() + g.slice(1)} ${dir}` : `${dir[0].toUpperCase() + dir.slice(1)} ${g}`);
-$('rvAdd').onclick = () => {
-  const c = map.getCenter(); addAt = [c.lat, c.lng];
-  if (distToPolyline(S.route.points, addAt) > 30) return toast('Move the map so the ⊕ sits on the route line, then tap ＋ Add');
+$('rvAdd').onclick = () => { const c = map.getCenter(); openAdd([c.lat, c.lng]); };
+function openAdd(ll) {
+  if (!S.route) return;
+  if (distToPolyline(S.route.points, ll) > 30) return toast('Tap on the yellow route line where the call should be (or put the ⊕ on it)');
+  addAt = ll;
+  S.addPin?.remove();
+  S.addPin = L.marker(ll, { icon: L.divIcon({ className: 'add-pin', html: '＋', iconSize: [34, 34] }), interactive: false, zIndexOffset: 3000 }).addTo(map);
+  const near = S.route.notes.find((n) => (n.kind === 'corner' || n.kind === 'junction') && segLen(ll, [n.lat, n.lon]) < 15);
+  $('addNote').textContent = near ? `There's already a call here (“${near.label}”) — picking one will change it.` : '';
   const opts = ['H', 1, 2, 3, 4, 5, 6, 'F', 'square', 'acute'];
   $('addGrades').innerHTML = ['left', 'right'].map((dir) =>
     `<div class="add-col"><h3 class="sub">${dir === 'left' ? '⬅ Left' : 'Right ➡'}</h3>${opts.map((g) => `<button data-dir="${dir}" data-g="${g}">${addWords(dir, g)}</button>`).join('')}</div>`).join('');
   openSheet('addSheet');
-};
+}
 $('addGrades').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || !addAt) return;
   const g = b.dataset.g, fx = { id: Date.now().toString(36), add: true, dir: b.dataset.dir, lat: addAt[0], lon: addAt[1], was: null };
   if (g === 'square' || g === 'acute') fx.shape = g; else fx.grade = g === 'H' || g === 'F' ? g : +g;
   fixes.push(fx); saveFixes();
-  $('addSheet').hidden = true; S.reviewFocus = addAt;
-  regen(`Added: ${addWords(fx.dir, g).toLowerCase()}`);
+  $('addSheet').hidden = true; S.reviewFocus = addAt; S.addPin?.remove(); S.addPin = null;
+  regen();
+  // tell exactly what happened
+  const made = S.route.notes.find((n) => n.fixed === fx.id);
+  if (!made) toast('Couldn’t place that call — make sure the spot is on the route line', 5000);
+  else if (made.added) toast(`Added: ${made.label}`);
+  else toast(`There was already a call here — changed it to “${made.label}”`, 4500);
 });
-$('addWordsOnly').onclick = () => { $('addSheet').hidden = true; S.reviewFocus = addAt; openRecce({ lat: addAt[0], lon: addAt[1] }); };
+$('addSheet').querySelector('[data-close]').addEventListener('click', () => { S.addPin?.remove(); S.addPin = null; });
+$('addWordsOnly').onclick = () => { $('addSheet').hidden = true; S.addPin?.remove(); S.addPin = null; S.reviewFocus = addAt; openRecce({ lat: addAt[0], lon: addAt[1] }); };
 
 // ---------- 🚗 / 🚲 vehicle ----------
 $('vehRow').addEventListener('click', async (e) => {

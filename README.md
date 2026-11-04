@@ -181,7 +181,10 @@ If a call was wrong, tap **✎ Fix** on the driving screen. A passenger should d
 **Route → 🔍 Review notes on map**, or from Stage notes. This shows every call on the map with its label and steps through them with **◀ ▶**; the map zooms to each one. You can also tap any dot. For each call:
 - **✎ Change** the grade or shape, or add recce words.
 - **🔇 Remove** it if it's unnecessary. This works for corners, junctions, crests, dips, cameras and tunnels; removing a recce-only note deletes its words.
-- **＋ Add at ⊕**: move the map so the red ⊕ sits on the route where a call is missing, then pick Left/Right and the type (hairpin, 1–6, flat, square, acute) or words only.
+- **Add a call**: tap the yellow route line where the call is missing (or put the red ⊕ there and tap **＋ Add at ⊕**). A purple pin marks the spot; pick Left/Right and the type (hairpin, 1–6, flat, square, acute) or words only. Outside review, long-press on your route → **＋ Add a call here**.
+  - Within 15 m of an existing call, the menu says so, and your choice changes that call instead of adding a second one.
+  - Afterwards the app confirms what happened: "Added: right 3", "changed it to right 2", or why it couldn't place it.
+  - Calls you add are never merged into a neighbouring call (e.g. as a chicane).
 
 Everything is saved by location (`codriver.fixes`), so it applies to every route through that spot. Calls you added are purple, and calls you fixed have a purple ring.
 
