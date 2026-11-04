@@ -124,9 +124,9 @@ Under the route summary, a row of options picks how to get from A to B. Each one
 
 ## Shaping the way between A and B
 
-In edit mode the **start and destination are fixed** (🔒). You only shape the part in between:
-- Tap the map or the route to add a point. It goes between the two points where it fits best.
-- Drag a point to move it, or tap it to remove it.
+In edit mode **every point can be dragged, including the start (S) and finish (F)**. On a circuit, dragging S/F moves the start/finish line.
+- Tap the map or the route to add a point.
+- Drag any point to move it. Tap a checkpoint to remove it. Start and finish can't be removed, only moved.
 - **📍 From here** moves the start to where you are now.
 
 ## Your checkpoints, your order

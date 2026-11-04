@@ -1157,21 +1157,24 @@ function startEdit() {
   // keep S and F clear of the edit toolbar and the bottom bar
   fitVisible(S.routeLayer.getBounds(), 200, 150, 40);
   drawEditPts();
-  toast('Start and destination stay fixed · tap the map or the route to add a point between · drag to move · tap a point to remove', 4500);
+  toast('Drag any point to move it, start and finish too · tap the map or the route to add a point · tap a checkpoint to remove it', 4500);
 }
 function drawEditPts() {
   editLayer?.remove();
   const loop = !!S.route.loop, last = editPts.length - 1;
   editLayer = L.layerGroup(editPts.map((p, i) => {
     const lab = i === 0 ? (loop ? 'S/F' : 'S') : (i === last && !loop ? 'F' : String(i));
-    // start and destination stay put: you only shape the way in between
+    // every point can be dragged, start and finish included; start and finish just can't be removed
     const locked = i === 0 || (i === last && !loop);
     const warn = (S.route.warnPts || []).some((q) => segLen(q, p) < 2);
-    const m = L.marker(p, { draggable: !locked, autoPan: true, zIndexOffset: locked ? 1500 : 2000,
+    const m = L.marker(p, { draggable: true, autoPan: true, zIndexOffset: locked ? 1500 : 2000,
       icon: L.divIcon({ className: 'edit-pt' + (i === 0 ? ' first' : i === last && !loop ? ' last' : '') + (locked ? ' locked' : '') + (warn ? ' warn' : ''), html: warn ? '⚠' + lab : lab, iconSize: [30, 30] }) });
-    m.on('dragend', (e) => { const ll = e.target.getLatLng(); editPush(); editPts[i] = [ll.lat, ll.lng]; rebuildEdit(); });
+    m.on('dragend', (e) => {
+      const ll = e.target.getLatLng(); editPush(); editPts[i] = [ll.lat, ll.lng]; rebuildEdit();
+      if (locked) toast(i === 0 ? (loop ? 'Start/finish moved' : 'Start moved') : 'Finish moved', 1800);
+    });
     m.on('click', () => {
-      if (locked) return toast(i === 0 ? 'Start is fixed — use “From here” to start where you are' : 'Destination is fixed — pick a new destination to change it');
+      if (locked) return toast(i === 0 ? 'Drag the start to move it, or use “From here” to start where you are' : 'Drag the finish to move it');
       editPush(); editPts.splice(i, 1); rebuildEdit();
     });
     return m;

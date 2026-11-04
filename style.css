@@ -180,7 +180,7 @@ h3.sub { font-size: 14px; color: var(--dim); margin: 18px 0 4px; text-transform:
 .lp-pop { display: flex; flex-direction: column; gap: 6px; }
 .lp-wrap .leaflet-popup-content-wrapper { background: #15181d; color: var(--ink); border-radius: 14px; }
 .lp-wrap .leaflet-popup-tip { background: #15181d; }
-.edit-pt.locked { box-shadow: 0 0 0 4px #0008, 0 2px 6px #000a; }
+.edit-pt.locked { box-shadow: 0 2px 6px #000a; width: 34px !important; height: 34px !important; margin: -17px 0 0 -17px !important; } /* start/finish: a bit bigger, easy to grab */
 
 #routeChip { flex-wrap: wrap; }
 .mode-row { flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
