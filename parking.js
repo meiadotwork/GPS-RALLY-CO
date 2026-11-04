@@ -5,10 +5,14 @@ import { segLen, bearing } from './pacenotes.js';
 
 const RESIDENTIAL = ['residential', 'living_street', 'unclassified', 'tertiary', 'tertiary_link'];
 const MAIN = ['secondary', 'secondary_link', 'primary', 'primary_link'];
+// big roads are always loaded so the hunt can drive along them to reach the next neighbourhood; with
+// one-way grids (New York…) the small streets alone often can't get you out of a block.
+const LINK = ['trunk', 'trunk_link'];
 
-/** Overpass query for the drivable streets around a point (a margin beyond the radius keeps the connections). */
-export function overpassQuery(lat, lon, radius, mainRoads = false) {
-  const types = (mainRoads ? [...RESIDENTIAL, ...MAIN] : RESIDENTIAL).join('|');
+/** Overpass query for the drivable streets around a point (a margin beyond the radius keeps the connections).
+ *  Main roads always come too, as connections; whether they're searched is decided in buildGraph. */
+export function overpassQuery(lat, lon, radius) {
+  const types = [...RESIDENTIAL, ...MAIN, ...LINK].join('|');
   const around = Math.round(radius + Math.min(400, 150 + radius * 0.15));
   const timeout = radius > 1500 ? 90 : 45;
   return `[out:json][timeout:${timeout}];way(around:${around},${lat.toFixed(6)},${lon.toFixed(6)})` +
@@ -27,7 +31,7 @@ const onewayOf = (t = {}) => {
  * blocks = street stretches between intersections (what we want to drive), each with
  * the directions you're allowed to drive it and whether it lies inside the radius.
  */
-export function buildGraph(osm, center, radius) {
+export function buildGraph(osm, center, radius, { mainRoads = false } = {}) {
   const nodes = new Map(), ways = [];
   for (const el of osm.elements || []) {
     if (el.type === 'node') nodes.set(el.id, [el.lat, el.lon]);
@@ -45,6 +49,7 @@ export function buildGraph(osm, center, radius) {
 
   for (const w of ways) {
     const ow = onewayOf(w.tags), name = w.tags?.name || w.tags?.ref || '';
+    const hw = w.tags?.highway, searchable = !hw || RESIDENTIAL.includes(hw) || (mainRoads && MAIN.includes(hw)); // the rest only connects
     const ids = w.nodes.filter((id) => nodes.has(id));
     let cur = [ids[0]];
     const close = () => {
@@ -55,7 +60,8 @@ export function buildGraph(osm, center, radius) {
       const b = { i: blocks.length, nodes: cur.slice(), fwd: ow >= 0, back: ow <= 0, len, mid, name,
         dist: segLen(mid, center), target: false };
       // inside the radius if its middle (or either end) is
-      b.target = b.dist <= radius || segLen(pts[0], center) <= radius * 0.9 || segLen(pts[pts.length - 1], center) <= radius * 0.9;
+      b.main = !searchable;
+      b.target = searchable && (b.dist <= radius || segLen(pts[0], center) <= radius * 0.9 || segLen(pts[pts.length - 1], center) <= radius * 0.9);
       blocks.push(b);
       for (let i = 1; i < cur.length; i++) {
         const a = cur[i - 1], c = cur[i], d = segLen(nodes.get(a), nodes.get(c));

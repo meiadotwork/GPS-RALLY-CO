@@ -510,3 +510,33 @@ test('time attack: the clock starts when you cross the start line, not before', 
   b.update(0, 1980, 10); assert.ok(b.waiting);
   assert.equal(b.update(3000, 2010, 10)[0].type, 'lapstart');
 });
+
+test('parking hunt drives along main roads to reach every neighbourhood, but only searches the small streets', () => {
+  // two one-way neighbourhoods that only connect through a main road (like the Bronx between the avenues)
+  const els = [], c0 = [40.82, -73.906];
+  let wid = 1;
+  const hood = (base, dx) => {
+    const id = (r, c) => base + r * 10 + c;
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+      const p = offsetPoint(offsetPoint(c0, 0, (r - 2) * 100), 90, dx + (c - 2) * 100);
+      els.push({ type: 'node', id: id(r, c), lat: p[0], lon: p[1] });
+    }
+    for (let r = 0; r < 5; r++) els.push({ type: 'way', id: wid++, nodes: [0, 1, 2, 3, 4].map((c) => id(r, c)), tags: { highway: 'residential', name: `${base} St ${r}`, ...(r % 2 ? { oneway: 'yes' } : {}) } });
+    for (let c = 0; c < 5; c++) els.push({ type: 'way', id: wid++, nodes: [0, 1, 2, 3, 4].map((r) => id(r, c)), tags: { highway: 'residential', name: `${base} Av ${c}`, ...(c % 2 ? { oneway: '-1' } : {}) } });
+    return id;
+  };
+  const W = hood(1000, -350), E = hood(2000, 350);
+  // the main road: west hood's middle street → east hood's middle street, two-way
+  const mids = [1, 2].map((k) => { const p = offsetPoint(c0, 90, -150 + k * 100); els.push({ type: 'node', id: 9000 + k, lat: p[0], lon: p[1] }); return 9000 + k; });
+  els.push({ type: 'way', id: wid++, nodes: [W(2, 4), ...mids, E(2, 0)], tags: { highway: 'primary', name: 'Main Avenue' } });
+  const osm = { elements: els };
+  const g = buildGraph(osm, c0, 900), h = planHunt(g, offsetPoint(c0, 90, -350), { maxLength: 1e9 });
+  assert.equal(h.unreachable, 0);
+  assert.equal(h.covered, h.total);
+  const targets = g.blocks.filter((b) => b.target);
+  assert.ok(targets.length === 80 && !targets.some((b) => b.name === 'Main Avenue'), 'main road connects but isn’t searched');
+  assert.ok(h.points.some((p) => segLen(p, offsetPoint(c0, 90, 350)) < 250) && h.points.some((p) => segLen(p, offsetPoint(c0, 90, -350)) < 250), 'both sides');
+  // ticking "main roads too" searches it as well
+  assert.ok(buildGraph(osm, c0, 900, { mainRoads: true }).blocks.some((b) => b.target && b.name === 'Main Avenue'));
+  assert.match(overpassQuery(40.8, -73.9, 500), /primary/);
+});

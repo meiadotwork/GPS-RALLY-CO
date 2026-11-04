@@ -246,7 +246,7 @@
     <input id="huntRange" type="range" min="100" max="5000" step="50">
     <input id="huntValue" type="number" inputmode="decimal" min="0" step="any"><span id="huntUnit">m</span>
   </div>
-  <label class="toggle"><input type="checkbox" id="huntMain"> Include main roads (avenues, boulevards)</label>
+  <label class="toggle"><input type="checkbox" id="huntMain"> Search main roads too (avenues, boulevards). They’re always used to get from one neighbourhood to the next.</label>
   <p class="fine">Drives every street in the circle, starting with the ones closest to your destination and spiralling outwards, so the first spots you see are the nearest. One-way streets are respected. Big areas are planned in batches of about 15 km; if you reach the end with no spot, you can continue further out.</p>
   <div class="row"><button id="huntGo" class="pill go">Plan the hunt</button></div>
   <p id="huntStatus" class="fine"></p>

@@ -1664,7 +1664,7 @@ $('huntMain').onchange = (e) => { settings.huntMain = e.target.checked ? 'on' : 
 async function fetchStreets(lat, lon, radius, main) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), radius > 1500 ? 100000 : 50000);
   try {
-    const res = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(overpassQuery(lat, lon, radius, main)),
+    const res = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(overpassQuery(lat, lon, radius)),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
     if (!res.ok) throw new Error(res.status === 429 ? 'map server busy, try again in a minute' : 'map server error ' + res.status);
     return await res.json();
@@ -1714,7 +1714,7 @@ $('huntGo').onclick = async () => {
     const osm = await fetchStreets(lat, lon, radius, main);
     $('huntStatus').textContent = 'Planning the hunt…';
     await new Promise((r) => setTimeout(r, 30)); // let the screen update
-    const g = buildGraph(osm, [lat, lon], radius);
+    const g = buildGraph(osm, [lat, lon], radius, { mainRoads: main });
     S.hunt = { g, lat, lon, radius, label, done: null };
     const msg = await planHuntRoute([lat, lon]);
     $('huntSheet').hidden = true;
