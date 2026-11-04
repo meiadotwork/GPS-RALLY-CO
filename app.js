@@ -4,16 +4,20 @@ import { buildStage } from './sample-route.js';
 import { specToHash, hashToSpec } from './share.js';
 import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js';
 import { overpassQuery, buildGraph, planHunt } from './parking.js';
+import { finishRecording } from './record.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
 const OSRM = 'https://router.project-osrm.org/route/v1/driving/';
+// 🚲 bike: OpenStreetMap's "foot" router ignores one-way streets and uses paths and parks — shortest way, any direction
+const ROUTERS = { car: OSRM, bike: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/' };
+let VEHICLE = 'car';
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, huntRadius: 400, huntMain: 'off', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -131,7 +135,7 @@ async function fetchJSON(url, ms = 12000) {
 }
 async function osrmFetch(coords, startBearing, alternatives = false, noToll = false) {
   const pts = coords.map((c) => `${c[1].toFixed(6)},${c[0].toFixed(6)}`).join(';');
-  let url = `${OSRM}${pts}?overview=full&geometries=geojson&steps=true&continue_straight=true`;
+  let url = `${ROUTERS[VEHICLE] || OSRM}${pts}?overview=full&geometries=geojson&steps=true&continue_straight=true`;
   if (alternatives) url += '&alternatives=3';
   if (noToll) url += '&exclude=toll';
   if (startBearing != null) url += `&bearings=${Math.round(startBearing)},60` + ';'.repeat(coords.length - 1);
@@ -143,7 +147,7 @@ const geomPts = (r) => r.geometry.coordinates.map(([lo, la]) => [la, lo]);
 // Fetch honouring the "avoid tolls" filter. If the server can't exclude tolls, fetch normally and
 // put the routes with the fewest toll points first.
 async function fetchFiltered(coords, startBearing, alternatives, noToll) {
-  if (!noToll) return osrmFetch(coords, startBearing, alternatives);
+  if (!noToll || VEHICLE === 'bike') return osrmFetch(coords, startBearing, alternatives); // no tolls on a bike
   try { return await osrmFetch(coords, startBearing, alternatives, true); }
   catch {
     const j = await osrmFetch(coords, startBearing, alternatives || coords.length === 2);
@@ -305,7 +309,7 @@ async function planMode(base, mode, noToll = false) {
 function setRoute(r, { fit = true } = {}) {
   if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
-    steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off',
+    steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike',
     elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
   });
   S.route = { ...r, ...gen };
@@ -365,7 +369,7 @@ function fmtDur(sec) {
 function paintSummary() {
   const R = S.route, corners = R.notes.filter((n) => n.kind === 'corner').length;
   const cams = R.notes.filter((n) => n.cams).length;
-  const dist = `${fmtDist(R.total)}${R.loop ? ' lap' : ''}`;
+  const dist = `${R.spec?.vehicle === 'bike' ? '🚲 ' : ''}${R.spec?.recorded ? '⏺ ' : ''}${fmtDist(R.total)}${R.loop ? ' lap' : ''}`;
   const laps = R.loop ? settings.laps : 1;
   const parts = R.loop && laps
     ? [`${laps} lap${laps > 1 ? 's' : ''} = ${fmtDist(R.total * laps)}`, `~${fmtDur(routeSeconds() * laps)}`, `${R.notes.length} note${R.notes.length === 1 ? '' : 's'}`]
@@ -430,7 +434,10 @@ async function buildRoute(spec, loop = S.loop, opts) {
     const coords = loop ? [...spec.via, spec.via[0]] : spec.via;
     if (spec.mode === 'notoll') spec = { ...spec, mode: 'fastest', noToll: true }; // older saved routes
     if (spec.noToll == null) spec = { ...spec, noToll: !!settings.noToll };       // new routes follow the filter
-    const mode = spec.mode || 'fastest', noToll = !!spec.noToll;
+    if (spec.vehicle == null) spec = { ...spec, vehicle: settings.vehicle || 'car' };
+    VEHICLE = spec.vehicle;
+    // on a bike "fastest" means the shortest way — any direction
+    const mode = spec.vehicle === 'bike' && (!spec.mode || spec.mode === 'fastest') ? 'shortest' : spec.mode || 'fastest', noToll = !!spec.noToll;
     const roundOn = loop && spec.via.length === 2 && settings.round !== 'off';
     const picksOwn = roundOn || mode === 'smooth' || mode === 'explore' || (mode === 'shortest' && (loop || spec.via.length > 2));
     if (picksOwn && !spec.planned) {
@@ -457,7 +464,7 @@ async function buildRoute(spec, loop = S.loop, opts) {
     }
     {
       const b = spec.base || spec.via;
-      const key = b.map((p) => p.map((x) => x.toFixed(4)).join()).join('>') + (loop ? '|loop' : '') + (noToll ? '|nt' : '');
+      const key = b.map((p) => p.map((x) => x.toFixed(4)).join()).join('>') + (loop ? '|loop' : '') + (noToll ? '|nt' : '') + (spec.vehicle === 'bike' ? '|bike' : '');
       if (S.modeKey !== key) { S.modeKey = key; S.modeInfo = {}; }
       S.modeInfo[mode] = { dist: r.distance, dur: r.duration, info: r.info };
     }
@@ -1369,10 +1376,14 @@ drawPlaces(); paintPlaceChips();
 const MODES = { fastest: '⚡ Fastest', shortest: '📏 Shortest', smooth: '〰️ Smooth', explore: '🎲 Explore' };
 function paintModes() {
   const sp = S.route?.spec, ok = sp && !sp.raw;
+  $('vehRow').hidden = !ok; $('vehHead').hidden = !ok; $('bikeNote').hidden = !(ok && sp.vehicle === 'bike');
+  if (ok) $('vehRow').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (sp.vehicle || 'car')));
   $('filterRow').hidden = !ok; $('typeHead').hidden = !ok; $('filterHead').hidden = !ok;
   $('modeRow').hidden = !ok;
   if (!ok) return;
-  const cur = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'fastest', info = S.modeInfo || {};
+  const bike = sp.vehicle === 'bike';
+  let cur = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'fastest'; if (bike && cur === 'fastest') cur = 'shortest';
+  const info = S.modeInfo || {};
   const nt = !!sp.noToll || sp.mode === 'notoll';
   const roundable = S.route.loop && (sp.base || sp.via).length === 2;
   const f = (key, on, label, sub) => `<button data-f="${key}" class="filter ${on ? 'on' : ''}">${on ? '✓ ' : ''}${label}<small>${sub}</small></button>`;
@@ -1381,7 +1392,7 @@ function paintModes() {
     (roundable ? f('round', settings.round !== 'off', '🔁 No repeated roads', settings.round !== 'off' ? (info[cur]?.info?.includes('repeated') ? info[cur].info : 'round circuit') : 'off') : '') +
     f('tidy', settings.smooth !== 'off', '🧹 Skip loops & U-turns', settings.smooth !== 'off' ? 'on — only points the app adds' : 'off');
   $('modeRow').innerHTML =
-    Object.entries(MODES).map(([m, label]) => {
+    Object.entries(MODES).filter(([m]) => !(bike && m === 'fastest')).map(([m, label]) => { // a bike always takes the shortest way
       const i = info[m];
       const sub = i ? `${fmtDist(i.dist)} · ${fmtDur(i.dur)}${i.info ? ' · ' + i.info : ''}` : m === 'explore' && cur === 'explore' ? 'tap for another' : '';
       return `<button data-m="${m}" class="${m === cur ? 'on' : ''}">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
@@ -1648,6 +1659,7 @@ async function planHuntRoute(from, { cont = false } = {}) {
   const here = S.fix ? [S.fix.lat, S.fix.lon] : null;
   if (here && segLen(here, h.points[0]) > 120) {
     try {
+      VEHICLE = 'car';
       const a = await osrmRoute([here, h.points[0]]);
       points = [...a.points, ...h.points.slice(1)];
       let approach = 0; for (let i = 1; i < a.points.length; i++) approach += segLen(a.points[i - 1], a.points[i]);
@@ -1783,3 +1795,59 @@ $('addGrades').addEventListener('click', (e) => {
   regen(`Added: ${addWords(fx.dir, g).toLowerCase()}`);
 });
 $('addWordsOnly').onclick = () => { $('addSheet').hidden = true; S.reviewFocus = addAt; openRecce({ lat: addAt[0], lon: addAt[1] }); };
+
+// ---------- 🚗 / 🚲 vehicle ----------
+$('vehRow').addEventListener('click', async (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || !S.route?.spec || S.route.spec.raw || S.busyMode) return;
+  settings.vehicle = v; saveSettings();
+  const sp = S.route.spec; if ((sp.vehicle || 'car') === v) return paintSummary();
+  S.busyMode = true;
+  toast(v === 'bike' ? '🚲 Shortest way for a bike — any direction…' : '🚗 Car route…', 8000);
+  try {
+    await buildRoute({ ...sp, via: sp.base || sp.via, planned: false, vehicle: v, mode: v === 'bike' ? 'fastest' : sp.mode }, S.route.loop, { fit: false });
+    toast(`${v === 'bike' ? '🚲' : '🚗'} ${fmtDist(S.route.total)}${S.route.loop ? ' lap' : ''} · ~${fmtDur(routeSeconds())}`);
+  } catch (err) { toast('Routing failed: ' + err.message); }
+  S.busyMode = false;
+});
+
+// ---------- ⏺ record a route by driving it ----------
+function startRec() {
+  if (!navigator.geolocation) return toast('No GPS on this device');
+  if (S.nav) stopNav();
+  if (S.mode === 'review') endReview();
+  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
+  $('bar').hidden = true; $('routeChip').hidden = true; $('recBar').hidden = false;
+  S.rec = { fixes: [], t0: Date.now(), dist: 0, line: L.polyline([], { color: '#ff3b30', weight: 5, opacity: 0.9 }).addTo(map) };
+  keepAwake();
+  S.rec.watch = navigator.geolocation.watchPosition((p) => {
+    const c = p.coords, f = { lat: c.latitude, lon: c.longitude, t: p.timestamp || Date.now(), accuracy: c.accuracy };
+    if (!S.rec || f.accuracy > 50) return;
+    const last = S.rec.fixes.at(-1);
+    if (last) S.rec.dist += segLen([last.lat, last.lon], [f.lat, f.lon]);
+    S.rec.fixes.push(f);
+    S.rec.line.addLatLng([f.lat, f.lon]);
+    map.setView([f.lat, f.lon], Math.max(map.getZoom(), 16), { animate: true });
+  }, (e) => { if (e.code === 1) toast('Location permission is off — allow it in Settings to record'); }, // brief signal gaps just pass
+  { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
+  S.rec.timer = setInterval(paintRec, 1000); paintRec();
+  toast('⏺ Recording — drive your route. Tap ■ Stop & save when you’re done.', 5000);
+}
+function paintRec() { if (S.rec) $('recInfo').textContent = `● REC  ${fmtDist(S.rec.dist)} · ${fmtTime(Date.now() - S.rec.t0)}`; }
+async function stopRec(save) {
+  const R = S.rec; if (!R) return;
+  navigator.geolocation.clearWatch(R.watch); clearInterval(R.timer); R.line.remove();
+  S.rec = null; $('recBar').hidden = true; $('bar').hidden = false;
+  S.wake?.release?.(); S.wake = null;
+  if (!save) { if (S.route) paintSummary(); return toast('Recording discarded'); }
+  const res = finishRecording(R.fixes);
+  if (res.points.length < 2 || res.length < 100) { if (S.route) paintSummary(); return toast('Too short to save — drive at least 100 m'); }
+  const d = new Date(), def = `Recorded ${d.getDate()}/${d.getMonth() + 1} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const name = (await askText('Name this route', def)) || def;
+  S.loop = res.loop; paintLoop();
+  await buildRoute({ raw: true, points: res.points, name, recorded: true }, res.loop);
+  await saveRoute();
+  toast(`⏺ “${name}” saved — ${fmtDist(res.length)}${res.loop ? ', as a circuit (back where you started)' : ''}`, 6000);
+}
+$('btnRecord').onclick = startRec;
+$('recStop').onclick = () => stopRec(true);
+$('recDiscard').onclick = () => stopRec(false);

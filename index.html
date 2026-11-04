@@ -57,6 +57,9 @@
   <div id="thisRoute" hidden>
     <input id="routeName" type="text" maxlength="80" placeholder="Name this route (optional)" autocomplete="off" hidden>
     <div id="routeInfo"></div>
+    <h3 class="sub" id="vehHead">Vehicle</h3>
+    <div class="seg" id="vehRow" hidden><button data-v="car">🚗 Car</button><button data-v="bike">🚲 Bike — any direction</button></div>
+    <p id="bikeNote" class="fine" hidden>🚲 Bike mode ignores one-way streets and takes the shortest way, including paths and parks. Riding against traffic can be dangerous and isn't allowed everywhere — ride with care, or walk your bike where you must.</p>
     <h3 class="sub" id="typeHead">Route type</h3>
     <div id="modeRow" class="mode-row wrap" hidden></div>
     <h3 class="sub" id="filterHead">Filters</h3>
@@ -94,6 +97,7 @@
     <button id="btnDraw" class="pill ghost">Draw route</button>
   </div>
   <div class="row"><button id="btnPlaces" class="pill ghost">📍 My places</button><button id="btnMyRoutes" class="pill ghost">★ My routes</button></div>
+  <div class="row"><button id="btnRecord" class="pill ghost">⏺ Record a route — just drive it</button></div>
   <div class="row"><button id="btnDemo" class="pill ghost">Load demo stage</button></div>
   <p class="fine">Pace notes are generated from map geometry and can be wrong. Keep your eyes on the road and drive to the conditions and the law.</p>
 </section>
@@ -140,6 +144,12 @@
   <div class="row"><button id="addWordsOnly" class="pill ghost">Words only (crest, rocks, bumps…)</button></div>
   <p class="fine">Saved by location, like your fixes — every route through here gets this call.</p>
 </section>
+
+<!-- recording -->
+<div id="recBar" hidden>
+  <div id="recInfo">● REC</div>
+  <div class="rv-actions"><button id="recDiscard" class="pill ghost">✕ Discard</button><button id="recStop" class="pill danger">■ Stop &amp; save</button></div>
+</div>
 
 <!-- countdown -->
 <div id="countdown" hidden><span id="cdNum">3</span></div>

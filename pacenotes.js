@@ -582,7 +582,7 @@ function decorate(notes, samples, kappa, opt) {
 
   // brake / hard brake: speed you'd be carrying in (no early braking) vs. what the corner allows
   const vGrip = speedProfile(samples, kappa, 100 / 3.6, { forwardOnly: true });
-  for (const n of notes) {
+  for (const n of opt.bike ? [] : notes) { // no brake calls on a bike
     if (n.kind !== 'corner' || n.grade === 'F' || n.mods.some((m) => m.includes('caution'))) continue;
     const i0 = Math.max(0, Math.round(n.sStart / step)), i1 = Math.min(vGrip.length - 1, Math.round(n.sEnd / step));
     const vIn = vGrip[Math.max(0, i0 - 2)];

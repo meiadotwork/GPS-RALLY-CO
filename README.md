@@ -207,6 +207,21 @@ Pick a destination: **🅿️ Find parking here** on a place, on a long-press, o
 4. **Batches:** big radii cover a lot of street (about 100 km for 1 km in a dense grid), so each batch is about **15 km** of driving. At the end of a batch, **"No spot yet? Continue the hunt"** plans the next batch from where you are, skipping streets already driven, until the whole radius is done.
 5. You're routed from where you are to the start of the hunt, then guided turn by turn with street names. Each turn carries its exact position along the route, because the hunt passes some junctions more than once. No countdown, and the search circle shows on the map.
 
+## ⏺ Record a route
+
+**Route → ⏺ Record a route**, then just drive. The app logs your GPS track (red line, distance and time). **■ Stop & save** asks for a name and saves the route to My routes. Its pace notes come from the road you actually drove. If you finish within 60 m of where you started, after more than 500 m, it's saved as a lap circuit.
+
+`record.js` cleans the track:
+- drops fixes with poor accuracy (> 35 m), points closer than 4 m (standing still), and jumps faster than 250 km/h
+- re-syncs if two fixes in a row agree, so a real jump such as leaving a tunnel doesn't lose the rest of the drive
+- smooths over 3 points, then simplifies (Douglas–Peucker, 2.5 m)
+
+A phone records about one fix per second, so at speed tight corners are rounded a little. Record twisty sections at a moderate pace, and correct calls in 🔍 Review.
+
+## 🚲 Bike mode
+
+On the route page, **Vehicle → 🚲 Bike — any direction**. It routes with OpenStreetMap's FOSSGIS "foot" router (`routing.openstreetmap.de/routed-foot`), which **ignores one-way streets** and can use paths and parks. It always takes the **shortest** way (Fastest is hidden), and there are no brake calls or toll filter. The setting sticks for new routes, and saved routes and share links remember it (`&bike=1`). The route page shows a short note, because riding against traffic can be dangerous and isn't allowed everywhere.
+
 ## Saving and backup
 
 Places, routes, recce notes, fixes, ghosts and best times are stored in the browser (`localStorage`). That storage belongs to the site address, is wiped when a **Private** tab closes, and is refused under Safari's **Block All Cookies**.

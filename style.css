@@ -268,3 +268,9 @@ h3.new-head { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 
 .add-col .sub { margin: 4px 0; }
 
 body.reviewing #toast { bottom: auto; top: calc(16px + var(--safe-t)); }
+
+#recBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--warn);
+  border-radius: 18px; padding: 12px; }
+#recInfo { text-align: center; font: 900 26px/1.2 ui-monospace, "SF Mono", Menlo, monospace; color: #ff5a3c; animation: recblink 1.4s infinite; }
+@keyframes recblink { 50% { opacity: .55; } }
+#recBar .pill.danger { background: var(--warn); color: #fff; }

@@ -444,3 +444,43 @@ test('review edits: add a call where none was, remove a crest', () => {
   const noCrest = generatePaceNotes(stage.points, { steps: stage.steps, elevation: stage.elevation, fixes: [{ id: 'r1', none: true, lat: crest.lat, lon: crest.lon }] });
   assert.ok(!noCrest.notes.some((n) => n.label === 'crest'));
 });
+
+import { cleanFixes, simplifyTrack, finishRecording } from '../record.js';
+test('recording: GPS fixes become a clean track that gives the same calls as the road', () => {
+  // drive the demo stage at ~15 m/s, one fix a second, with ±3 m GPS noise, a bad fix and a jump
+  let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5);
+  const fixes = [];
+  for (let i = 0, t = 0; i < gen.samples.length; i += 3, t += 1000) {
+    const s = gen.samples[i];
+    fixes.push({ lat: s.lat + rnd() * 5e-5, lon: s.lon + rnd() * 6e-5, t, accuracy: 6 });
+    if (i === 300) fixes.push({ lat: s.lat + 0.01, lon: s.lon, t: t + 10, accuracy: 6 });    // jump
+    if (i === 600) fixes.push({ lat: s.lat + 0.001, lon: s.lon, t: t + 20, accuracy: 80 });  // poor accuracy
+  }
+  const rec = finishRecording(fixes);
+  assert.ok(Math.abs(rec.length - gen.total) / gen.total < 0.05, `length ${Math.round(rec.length)} vs ${Math.round(gen.total)}`);
+  assert.ok(rec.points.length < fixes.length * 0.8);                         // simplified
+  assert.equal(rec.loop, false);
+  const fromTrack = generatePaceNotes(rec.points).notes.filter((n) => n.kind === 'corner').map((n) => n.dir);
+  const fromMap = generatePaceNotes(stage.points).notes.filter((n) => n.kind === 'corner').map((n) => n.dir);
+  assert.ok(Math.abs(fromTrack.length - fromMap.length) <= 2, `${fromTrack.length} corners from the track vs ${fromMap.length} from the map`);
+  assert.equal(cleanFixes([{ lat: 40, lon: -73, t: 0 }, { lat: 40, lon: -73.00001, t: 1000 }]).length, 1); // standing still
+  assert.equal(simplifyTrack([[40, -73], [40.0001, -73], [40.0002, -73]]).length, 2);               // straight line
+});
+
+test('recording re-syncs after a real jump (e.g. leaving a tunnel) instead of dropping the rest', () => {
+  const fx = [];
+  for (let i = 0; i < 30; i++) fx.push({ lat: 40 + i * 0.0001, lon: -73, t: i * 1000 });            // 11 m/s north
+  for (let i = 0; i < 30; i++) fx.push({ lat: 40.02 + i * 0.0001, lon: -73, t: 30000 + i * 1000 }); // 2 km further on, 1 s later
+  const kept = cleanFixes(fx);
+  assert.ok(kept.length > 50, `kept ${kept.length}`);
+  // a single spike is still thrown away
+  const spike = [...fx.slice(0, 10)]; spike.splice(5, 0, { lat: 40.5, lon: -73, t: 5500 });
+  assert.equal(cleanFixes(spike).length, 10);
+});
+
+test('bike: no brake calls', () => {
+  const car = generatePaceNotes(stage.points, { steps: stage.steps }).notes.map((n) => n.label);
+  const bike = generatePaceNotes(stage.points, { steps: stage.steps, bike: true }).notes.map((n) => n.label);
+  assert.ok(car.some((l) => l.startsWith('brake')));
+  assert.ok(!bike.some((l) => l.includes('brake')));
+});
