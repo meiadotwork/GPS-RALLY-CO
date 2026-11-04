@@ -318,8 +318,14 @@ function setRoute(r, { fit = true } = {}) {
   S.tracker = new RouteTracker(gen.samples, gen.loop);
   S.sched = newScheduler();
   // remember where each waypoint sits along the route, for rerouting
+  // (in order: each one searched from the previous, so a point the route passes twice gets the right pass)
   const t = new RouteTracker(gen.samples);
-  S.route.waypoints = (r.waypoints || []).map((w) => w.ll || w).map((w) => ({ ll: w, s: t.locate(w[0], w[1]).s }));
+  const along = (pts) => { let from = 0; return pts.map((ll) => { const h = t.firstPass(ll[0], ll[1], from); from = h.idx; return h.s; }); };
+  const wps = (r.waypoints || []).map((w) => w.ll || w), ws = along(wps);
+  S.route.waypoints = wps.map((ll, i) => ({ ll, s: !gen.loop && i === wps.length - 1 ? gen.total : ws[i] })); // the destination is the END
+  // your checkpoints (not the app's hidden pins): the finish only unlocks once you've been through them all
+  const user = r.spec?.raw || r.spec?.parking ? [] : (r.spec?.base || r.spec?.via || []), mids = gen.loop ? [] : user.slice(1, -1), cs = along(mids);
+  S.route.checkpoints = mids.map((ll, i) => ({ n: i + 1, ll, s: cs[i] }));
   drawRoute(fit);
   $('btnGo').disabled = false;
   $('routeActions').hidden = false;
@@ -833,6 +839,24 @@ function onFix(f) {
     }
     sNow = S.sU;
   }
+  if (S.cps?.length && S.race) {
+    // passed = driven through it, on the route (a jump past it, e.g. a shortcut, doesn't count)
+    for (const c of S.cps) if (!c.passed && !S.offCount && S.prevS != null && S.prevS > c.s - 150 && S.prevS <= c.s + 10 && sNow >= c.s - 10) {
+      c.passed = true;
+      const k = S.cps.filter((x) => x.passed).length;
+      beep(990, 0.12); setTimeout(() => beep(1320, 0.15), 140);
+      toast(`✓ Checkpoint ${c.n} · ${k}/${S.cps.length}` + (k === S.cps.length ? ' — finish unlocked' : ''), 2500);
+    }
+    const missed = S.cps.filter((c) => !c.passed);
+    S.race.locked = missed.length > 0;
+    if (S.race.locked && sNow >= S.route.total - 25 && !S.lockWarned) {
+      S.lockWarned = true;
+      const list = missed.map((c) => c.n).join(', ');
+      speak(`Finish locked. Missed checkpoint ${list}.`, true);
+      toast(`🔒 Finish locked — missed checkpoint ${list}. Drive through it, then come back to the finish (or tap Stop).`, 8000);
+    }
+  }
+  S.prevS = sNow;
   S.lastS = loc.s;
   if (S.race) for (const e of S.race.update(now, sNow, S.speed)) onRaceEvent(e, now);
   if (S.race && S.nav) paintGhost(now, sNow);
@@ -859,8 +883,9 @@ function onFix(f) {
   {
     const L = S.route.total, left = S.route.loop ? L - (((sNow % L) + L) % L) : Math.max(0, L - loc.s);
     const eta = new Date(now + routeSeconds() * (left / L) * 1000);
-    $('remain').textContent = S.route.loop ? `${fmtDist(left)} to the line`
-      : `${fmtDist(left)} to go · ETA ${eta.getHours()}:${String(eta.getMinutes()).padStart(2, '0')}`;
+    const cp = S.cps?.length ? `CP ${S.cps.filter((c) => c.passed).length}/${S.cps.length} · ` : '';
+    $('remain').textContent = cp + (S.route.loop ? `${fmtDist(left)} to the line`
+      : `${fmtDist(left)} to go · ETA ${eta.getHours()}:${String(eta.getMinutes()).padStart(2, '0')}`);
     glyph(up.note);
   }
   drawMe(f.lat, f.lon, S.heading);
@@ -939,7 +964,8 @@ function startNav() {
   S.tracker = new RouteTracker(S.route.samples, S.route.loop);
   S.sched = newScheduler();
   S.offCount = 0; S.prevFix = null; S.speed = 0;
-  S.lastS = null; S.sU = 0;
+  S.lastS = null; S.sU = 0; S.prevS = null;
+  S.cps = (S.route.checkpoints || []).map((c) => ({ ...c, passed: false })); S.lockWarned = false;
   $('lapInfo').hidden = !S.route.loop; $('lapInfo').textContent = S.route.loop ? (settings.start === 'flying' ? '⏱ TIME ATTACK — clock starts at the line' : 'Waiting for GO') : '';
   const flying = S.route.loop && settings.start === 'flying' && !S.route.spec?.parking;
   S.race = new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1, flying });

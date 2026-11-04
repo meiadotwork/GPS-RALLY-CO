@@ -19,8 +19,8 @@ export class RouteTracker {
   locate(lat, lon) {
     const S = this.samples;
     let r = this.loop
-      ? this._search(lat, lon, this.idx - 20, this.idx + 400)
-      : this._search(lat, lon, Math.max(0, this.idx - 20), Math.min(S.length - 1, this.idx + 400));
+      ? this._search(lat, lon, this.idx - 20, this.idx + 400, 15, this.idx - 2)
+      : this._search(lat, lon, Math.max(0, this.idx - 20), Math.min(S.length - 1, this.idx + 400), 15, Math.max(0, this.idx - 2));
     if (r.offset > 80) {
       const g = this._search(lat, lon, 0, S.length - 1);
       if (g.offset < r.offset - 20) r = g;
@@ -28,9 +28,23 @@ export class RouteTracker {
     this.idx = r.idx;
     return r;
   }
-  _search(lat, lon, from, to) {
+  /** Where a point first sits along the route, at or after sample `from` (for checkpoints, in order). */
+  firstPass(lat, lon, from = 0, tol = 15) {
+    const S = this.samples, hits = [];
+    let best = Infinity;
+    for (let i = from; i < S.length - 1; i++) { const h = this._search(lat, lon, i, i + 1); hits.push(h); best = Math.min(best, h.offset); }
+    let j = hits.findIndex((h) => h.offset <= best + tol);
+    if (j < 0) return { s: S[from].s, idx: from, offset: Infinity };
+    while (j + 1 < hits.length && hits[j + 1].offset <= hits[j].offset) j++;
+    return hits[j];
+  }
+  // A route that uses the same street twice (or ends where it passed earlier) has two good matches.
+  // Take the one you reach FIRST going forward from where you are, never a later pass of the same road:
+  // otherwise the position jumps ahead, skips your checkpoints and can even "finish" early.
+  _search(lat, lon, from, to, tol = 15, ahead = Infinity) { // ahead: where "forward" starts (just behind the car)
     const S = this.samples, cos = Math.cos(lat * DEG), M = 111320, m = S.length - 1;
     let best = { offset: Infinity, idx: 0, s: 0 };
+    const hits = [];
     for (let k = from; k < to; k++) {
       const i = ((k % m) + m) % m; // wraps on a circuit; plain index otherwise
       const a = S[i], b = S[i + 1];
@@ -39,7 +53,16 @@ export class RouteTracker {
       const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-9;
       const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2));
       const px = ax + dx * t, py = ay + dy * t, d = Math.hypot(px, py);
-      if (d < best.offset) best = { offset: d, idx: i, s: a.s + (b.s - a.s) * t };
+      const h = { offset: d, idx: i, s: a.s + (b.s - a.s) * t, k };
+      hits.push(h);
+      if (d < best.offset) best = h;
+    }
+    // Best match far ahead (a later pass over the same road)? Stay on this pass if it's about as close.
+    // Nearby road (a hairpin's other side, the next 150 m) is matched normally.
+    if (best.k - ahead > 30) {
+      let near = null;
+      for (const h of hits) if (h.k <= ahead + 30 && (!near || h.offset < near.offset)) near = h;
+      if (near && near.offset <= best.offset + tol) best = near;
     }
     const a = S[best.idx], b = S[Math.min(best.idx + 1, S.length - 1)];
     best.bearing = bearing([a.lat, a.lon], [b.lat, b.lon]);

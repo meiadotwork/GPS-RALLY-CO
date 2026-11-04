@@ -73,7 +73,7 @@ export class Race {
         this.segT = t; this.segS = Math.floor(s / L) * L; this.cur = []; this._record(t, s, true);
         if (this.target && this.laps.length >= this.target) ev.push(this.finish(t));
       }
-    } else if (s >= this.total - 20) { this._record(t, s, true); ev.push(this.finish(t)); }
+    } else if (s >= this.total - 20 && !this.locked) { this._record(t, s, true); ev.push(this.finish(t)); } // locked = checkpoints still to pass
     if (this.state === 'running') this._record(t, s);
     this.lastS = s;
     return ev;

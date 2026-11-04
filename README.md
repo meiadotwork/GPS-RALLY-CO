@@ -129,6 +129,15 @@ In edit mode **every point can be dragged, including the start (S) and finish (F
 - Drag any point to move it. Tap a checkpoint to remove it. Start and finish can't be removed, only moved.
 - **📍 From here** moves the start to where you are now.
 
+## Checkpoints, then the finish
+
+The finish **unlocks only after you've driven through all your checkpoints**, in order. Reaching the destination early, for example on a lap round your block that passes the finish street before the end, doesn't end the run.
+- As you pass each checkpoint you hear a short double beep, and the screen shows **✓ Checkpoint 2 · 2/5**. The driving screen keeps a running **CP 2/5**.
+- If you reach the finish having **missed** a checkpoint (say you took a shortcut past it), you hear "Finish locked. Missed checkpoint 3." Drive through it and come back to the finish, or tap Stop.
+- **Your position follows the route in order.** When the route uses the same street twice, or ends on a street you already drove, the app stays on the pass you're actually on. It never jumps ahead to the later one, so calls aren't skipped and the run can't end early.
+
+Circuits work the same way, lap after lap. Checkpoints are counted on A-to-B routes, where they unlock the finish.
+
 ## Your checkpoints, your order
 
 This app is for building **your** route, not the "optimal" one:

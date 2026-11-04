@@ -540,3 +540,41 @@ test('parking hunt drives along main roads to reach every neighbourhood, but onl
   assert.ok(buildGraph(osm, c0, 900, { mainRoads: true }).blocks.some((b) => b.target && b.name === 'Main Avenue'));
   assert.match(overpassQuery(40.8, -73.9, 500), /primary/);
 });
+
+test('a route that passes its own finish (or a street) twice: the position never jumps to the later pass', () => {
+  // a neighbourhood lap: east along a street, round a block, back along the SAME street, finishing mid-way along it
+  const c0 = [40.82, -73.906], P = (e, n) => offsetPoint(offsetPoint(c0, 90, e), 0, n);
+  const pts = [P(0, 0), P(300, 0), P(600, 0), P(600, 200), P(300, 200), P(300, 0), P(450, 0)]; // finish at 450 m east, passed first at ~450 m
+  const gen = generatePaceNotes(pts, {});
+  const sim = new DriveSim(gen.samples, gen.kappa, 40 / 3.6), tr = new RouteTracker(gen.samples);
+  let maxJump = 0, last = 0, early = false;
+  while (!sim.done) {
+    const f = sim.tick(0.5), s = tr.locate(f.lat, f.lon).s;
+    maxJump = Math.max(maxJump, s - last); last = s;
+    if (s >= gen.total - 20 && f.s < gen.total - 100) early = true;  // "finished" while really on the first pass
+  }
+  assert.ok(!early, 'finished early on the first pass over the finish');
+  assert.ok(maxJump < 30, `position jumped ${Math.round(maxJump)} m ahead`);
+});
+
+test('circuit whose last stretch runs beside its first: the position never jumps to the end of the lap', () => {
+  const loop = generatePaceNotes(stage.points, { steps: stage.steps, loop: true });
+  const sim = new DriveSim(loop.samples, loop.kappa, 120 / 3.6, { loop: true, laps: 2 }), tr = new RouteTracker(loop.samples, true);
+  let sU = null, last = null, worst = 0;
+  while (!sim.done) {
+    const s = tr.locate(...Object.values((({ lat, lon }) => ({ lat, lon }))(sim.tick(0.5)))).s;
+    if (last != null) { let d = s - last; if (d < -loop.total / 2) d += loop.total; else if (d > loop.total / 2) d -= loop.total; worst = Math.min(worst, d); sU += d; } else sU = s;
+    last = s;
+  }
+  assert.ok(worst > -5, `went backwards ${Math.round(-worst)} m`);
+  assert.ok(sU > 1.9 * loop.total);
+});
+
+test('a locked finish (checkpoints still to pass) doesn’t end the run; it finishes once unlocked', () => {
+  const r = new Race({ total: 1000 }); r.start(0); r.update(0, 0, 10);
+  r.locked = true;
+  assert.equal(r.update(5000, 990, 10).length, 0);
+  assert.equal(r.state, 'running');
+  r.locked = false;
+  assert.equal(r.update(6000, 995, 10)[0].type, 'finish');
+});
