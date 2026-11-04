@@ -1,17 +1,25 @@
 // Race clock: start on GO, laps on a circuit, finish at the destination or after N laps.
+// Time attack (flying: true, circuits): no GO — the clock starts when you cross the start line.
 // Pure ES module (no DOM) so it can be tested in Node.
 
 export class Race {
   /** @param {{ total: number, loop?: boolean, laps?: number }} o  laps: target on a circuit, 0 = unlimited */
-  constructor({ total, loop = false, laps = 1 }) {
-    this.total = total; this.loop = loop; this.target = loop ? laps : 1;
+  constructor({ total, loop = false, laps = 1, flying = false }) {
+    this.total = total; this.loop = loop; this.target = loop ? laps : 1; this.flying = !!(flying && loop);
     this.state = 'idle';
   }
   start(t) {
     Object.assign(this, { t0: t, state: 'running', init: true, laps: [], lapStart: null, top: 0, dist: 0, lastS: null,
       segT: null, segS: 0, cur: [], lapTraces: [] });
+    if (this.flying) this.t0 = null; // the clock waits for the line
   }
-  elapsed(t) { return this.state === 'idle' ? 0 : (this.state === 'done' ? this.result.ms : t - this.t0); }
+  /** true while a time attack is waiting for you to cross the line */
+  get waiting() { return this.state === 'running' && this.t0 == null; }
+  elapsed(t) { return this.state === 'idle' || this.t0 == null ? 0 : (this.state === 'done' ? this.result.ms : t - this.t0); }
+  _go(t, lineS) { // time attack: crossing the line starts the clock — everything before it doesn't count
+    Object.assign(this, { t0: t, lapStart: t, segT: t, segS: lineS, cur: [], dist: 0, top: 0, onLine: false });
+    this._record(t, lineS, true);
+  }
   lapTime(t) { return this.lapStart == null ? null : t - this.lapStart; }
   /** Where we are in the timed part (the run, or the current lap): { elapsed ms, dist m } — null on an out lap. */
   segment(t, s) { return this.segT == null ? null : { elapsed: t - this.segT, dist: s - this.segS }; }
@@ -29,6 +37,12 @@ export class Race {
     if (this.state !== 'running') return [];
     if (this.init) { // first position after GO
       this.init = false; this.lastS = s; this.s0 = s;
+      if (this.flying) {
+        const L = this.total, m = ((s % L) + L) % L;
+        this.skipUntil = -Infinity; // just before the line: that crossing counts
+        if (m < 30) { this.onLine = true; this.lineS = s - m; } // parked on the line: the clock starts as you pull away
+        return [];
+      }
       if (this.loop) {
         const L = this.total, m = ((s % L) + L) % L;
         this.lapStart = m < 50 || m > L - 50 ? this.t0 : null; // on the line: lap 1 runs from GO
@@ -39,6 +53,9 @@ export class Race {
       return [];
     }
     const ev = [];
+    if (this.onLine && s > this.lastS + 0.5 && s - this.lineS > 2 && Math.floor(s / this.total) === Math.floor(this.lineS / this.total)) {
+      this._go(t, this.lineS); ev.push({ type: 'lapstart' }); this.lastS = s; return ev;
+    }
     this.top = Math.max(this.top, v || 0);
     if (s > this.lastS) this.dist += s - this.lastS;
     if (this.loop) {
@@ -50,8 +67,9 @@ export class Race {
           this.lapTraces.push(this.cur);
           this.laps.push(ms);
           ev.push({ type: 'lap', n: this.laps.length, ms, best: this.laps.length > 1 && ms < prevBest });
-        } else ev.push({ type: 'lapstart' });
+        } else { ev.push({ type: 'lapstart' }); if (this.flying) this.t0 = t; }
         this.lapStart = t;
+        if (this.flying && this.laps.length === 0) { this.dist = 0; this.top = 0; this.onLine = false; }
         this.segT = t; this.segS = Math.floor(s / L) * L; this.cur = []; this._record(t, s, true);
         if (this.target && this.laps.length >= this.target) ev.push(this.finish(t));
       }

@@ -234,6 +234,12 @@ Places, routes, recce notes, fixes, ghosts and best times are stored in the brow
 - Names are typed in an in-app box, not the browser's `prompt()`, which some Home Screen apps and in-app browsers block.
 - **Settings → Backup → Export** saves everything to `codriver-backup-YYYY-MM-DD.json` (on iPhone via the share sheet: Save to Files, AirDrop…). **Import** merges a backup back in: places, routes, notes and fixes by id, and ghosts and best times keeping the faster one. Use it to restore, or to move to another phone.
 
+## Time attack (circuits)
+
+On a lap circuit, **Route → Circuit → Start** has two choices:
+- **🚦 3-2-1 GO**: a countdown, and the clock starts on GO.
+- **⏱ Time attack**: no countdown. Drive your out lap, and the clock starts the moment you **cross the start line**. If you're parked on the line, it starts as you pull away. The out lap counts toward neither the time nor the distance, and time-attack records are kept apart from GO records.
+
 ## Full screen while driving
 
 - **Tap the arrow or the call text** → only the call, full screen: huge arrow, call and distance, with details below. Tap again for the normal view.

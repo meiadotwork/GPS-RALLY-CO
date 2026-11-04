@@ -484,3 +484,29 @@ test('bike: no brake calls', () => {
   assert.ok(car.some((l) => l.startsWith('brake')));
   assert.ok(!bike.some((l) => l.includes('brake')));
 });
+
+test('time attack: the clock starts when you cross the start line, not before', () => {
+  const L = 2000;
+  // starting mid-lap: out lap is free, the clock starts at the line
+  const r = new Race({ total: L, loop: true, laps: 2, flying: true }); r.start(0);
+  const ev = []; let tLine = null;
+  for (let t = 0, s = 900; ev.every((e) => e.type !== 'finish'); t += 1000, s += 20) {
+    const e = r.update(t, s, 20); ev.push(...e);
+    if (e.some((x) => x.type === 'lapstart')) tLine = t;
+    if (tLine == null) assert.equal(r.elapsed(t), 0);
+  }
+  assert.equal(tLine, 55000);                                   // (2000 − 900) / 20 m/s
+  const res = ev.find((e) => e.type === 'finish').result;
+  assert.equal(res.laps.length, 2);
+  assert.equal(res.ms, 2 * 100000);                             // only the two flying laps
+  assert.ok(Math.abs(res.dist - 2 * L) < 30);                   // the out lap isn't counted
+  // parked on the line: the clock starts as you pull away
+  const p = new Race({ total: L, loop: true, laps: 1, flying: true }); p.start(0);
+  p.update(0, 0, 0); p.update(5000, 0, 0); assert.equal(p.elapsed(9000), 0);
+  assert.equal(p.update(10000, 5, 5)[0].type, 'lapstart');
+  assert.equal(p.elapsed(11000), 1000);
+  // just before the line: that crossing starts it
+  const b = new Race({ total: L, loop: true, laps: 1, flying: true }); b.start(0);
+  b.update(0, 1980, 10); assert.ok(b.waiting);
+  assert.equal(b.update(3000, 2010, 10)[0].type, 'lapstart');
+});

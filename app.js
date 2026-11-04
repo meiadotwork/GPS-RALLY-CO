@@ -17,7 +17,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -867,6 +867,7 @@ function sayTime(ms) {
 function lapLabel(now) {
   const R = S.race;
   if (!R || R.state === 'idle') return 'Waiting for GO';
+  if (R.waiting) return R.onLine ? '⏱ TIME ATTACK — clock starts as you pull away' : '⏱ TIME ATTACK — clock starts at the line';
   const n = R.laps.length + (R.lapStart != null ? 1 : 0);
   const of = R.target ? `/${R.target}` : '';
   const cur = R.lapStart != null ? fmtTime(now - R.lapStart) : 'out lap';
@@ -875,7 +876,7 @@ function lapLabel(now) {
 }
 
 function onRaceEvent(e) {
-  if (e.type === 'lapstart') speak('Lap one.');
+  if (e.type === 'lapstart') { speak(S.race.flying ? 'Clock running. Lap one.' : 'Lap one.'); if (S.race.flying) beep(1320, 0.4); }
   else if (e.type === 'lap') {
     const R = S.race, left = R.target ? R.target - e.n : null;
     let msg = `Lap ${e.n}, ${sayTime(e.ms)}${e.best ? ', best lap' : ''}.`;
@@ -931,8 +932,9 @@ function startNav() {
   S.sched = newScheduler();
   S.offCount = 0; S.prevFix = null; S.speed = 0;
   S.lastS = null; S.sU = 0;
-  $('lapInfo').hidden = !S.route.loop; $('lapInfo').textContent = S.route.loop ? 'Waiting for GO' : '';
-  S.race = new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1 });
+  $('lapInfo').hidden = !S.route.loop; $('lapInfo').textContent = S.route.loop ? (settings.start === 'flying' ? '⏱ TIME ATTACK — clock starts at the line' : 'Waiting for GO') : '';
+  const flying = S.route.loop && settings.start === 'flying' && !S.route.spec?.parking;
+  S.race = new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1, flying });
   $('raceClock').textContent = '0:00.0';
   S.lastCalled = null; S.ghostSaved = false;
   S.ghost = loadGhost(); $('delta').textContent = S.ghost ? 'ghost ready' : ''; $('delta').className = '';
@@ -945,7 +947,9 @@ function startNav() {
 
   const sim = +$('simSpeed').value;
   const go = () => { S.race.start(Date.now()); if (sim > 0) startSim(sim); };
-  if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); } else countdown(go);
+  if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); }
+  else if (flying) { speak('Time attack. The clock starts when you cross the line.'); go(); }
+  else countdown(go);
   if (sim > 0) {
     // the simulated car waits on the line until GO
   } else {
@@ -1065,7 +1069,7 @@ $('chipName').onclick = async () => {
 };
 
 // ---------- results ----------
-function pbKey() { return 'pb|' + specToHash(S.route.spec, { loop: S.route.loop }) + '|' + (S.route.loop ? settings.laps : 1); }
+function pbKey() { return 'pb|' + specToHash(S.route.spec, { loop: S.route.loop }) + '|' + (S.route.loop ? settings.laps : 1) + (S.route.loop && settings.start === 'flying' ? '|fly' : ''); } // flying laps are their own records
 function finishRace(res) {
   const R = S.route, name = R.spec?.name || '';
   const newGhost = !R.loop && res.ghost ? saveGhost(res.ghost) : false;
@@ -1113,12 +1117,17 @@ $('resShare').onclick = async () => {
 // ---------- laps on a circuit ----------
 function paintLaps() {
   const on = !!S.route?.loop;
-  $('lapsRow').hidden = !on;
+  $('lapsRow').hidden = !on; $('startRow').hidden = !on; $('startNote').hidden = !on;
   if (!on) return;
+  $('startRow').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.st === (settings.start || 'go')));
+  $('startNote').textContent = settings.start === 'flying'
+    ? '⏱ Time attack: no countdown. Drive your out lap and the clock starts when you cross the start line (or as you pull away, if you’re parked on it).'
+    : '3-2-1 GO: the clock starts on GO.';
   const n = settings.laps;
   $('lapsVal').textContent = n || '∞';
   $('lapsInfo').textContent = n ? `${fmtDist(S.route.total * n)} total · ~${fmtDur(routeSeconds() * n)}` : `${fmtDist(S.route.total)} a lap · no finish`;
 }
+$('startRow').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.st; if (!v) return; settings.start = v; saveSettings(); paintLaps(); });
 function setLaps(n) { settings.laps = Math.max(0, Math.min(99, n)); saveSettings(); paintSummary(); }
 $('lapsMinus').onclick = () => setLaps(settings.laps === 1 ? 0 : settings.laps === 0 ? 0 : settings.laps - 1);
 $('lapsPlus').onclick = () => setLaps(settings.laps === 0 ? 1 : settings.laps + 1);
