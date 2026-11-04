@@ -330,6 +330,7 @@ function setRoute(r, { fit = true } = {}) {
 function regen(msg) {
   if (!S.route) return;
   setRoute(S.route, { fit: false });
+  if (S.mode === 'review') setTimeout(() => reviewNear(S.reviewFocus));
   if (S.nav) S.sched.seek(S.route.loop ? S.sU : (S.lastOnRouteS || 0));
   if (msg) toast(msg);
 }
@@ -381,7 +382,7 @@ function paintSummary() {
   $('chipSave').textContent = saved ? '★' : '☆';
   $('chipSave').classList.toggle('on', saved);
   $('chipMeta').textContent = parts.join(' · ');
-  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit';
+  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review';
   paintModes();
 }
 
@@ -495,9 +496,11 @@ function drawRoute(fit) {
   S.noteLayer = L.layerGroup(S.route.notes.map((n) => {
     const cls = n.kind === 'junction' ? 'junc' : (n.grade === 'H' || n.grade <= 2) ? 'tight' : '';
     // labels: all shown, or hidden with a tap on the dot to see that one
-    const show = settings.labels === 'on';
-    const m = L.marker([n.lat, n.lon], { icon: L.divIcon({ className: `note-dot ${cls}`, iconSize: [show ? 12 : 16, show ? 12 : 16] }), interactive: !show })
+    const reviewing = S.mode === 'review', show = settings.labels === 'on' || reviewing;
+    const mine = n.added ? ' mine' : n.fixed ? ' fixed' : '';
+    const m = L.marker([n.lat, n.lon], { icon: L.divIcon({ className: `note-dot ${cls}${mine}`, iconSize: [show ? 14 : 16, show ? 14 : 16] }), interactive: !show || reviewing })
       .bindTooltip(n.label, { permanent: show, direction: 'right', offset: [8, 0], className: 'note-tip' });
+    if (reviewing) m.on('click', (e) => { L.DomEvent.stopPropagation(e); reviewGo(S.route.notes.indexOf(n)); });
     return m;
   })).addTo(map);
   S.notes_cams = S.route.notes.flatMap((n) => n.cams || []);
@@ -551,7 +554,7 @@ $('searchForm').addEventListener('submit', async (e) => {
 
 $('btnPick').onclick = () => { S.mode = 'pick'; $('routeSheet').hidden = true; toast('Tap the map to set destination'); };
 map.on('contextmenu', (e) => { // long-press
-  if (S.nav || S.mode === 'edit' || S.mode === 'draw') return;
+  if (S.nav || S.mode === 'edit' || S.mode === 'draw' || S.mode === 'review') return;
   const ll = [e.latlng.lat, e.latlng.lng];
   const el = document.createElement('div'); el.className = 'lp-pop';
   el.innerHTML = '<button class="pill go" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
@@ -1488,14 +1491,20 @@ function openFix(n) {
     : '<p class="fine">This isn\'t a corner — you can remove it, or add recce words.</p>';
   $('fixHead').hidden = !cornerish;
   $('fixUndo').hidden = !n.fixed;
+  $('fixNone').textContent = cornerish ? '🔇 Remove this call' : '🔇 Remove this call';
+  S.reviewFocus = [n.lat, n.lon];
   openSheet('fixSheet');
 }
 function saveFix(fx) {
   const n = fixTarget;
+  if (fx.none && n.kind === 'recce') { // your own recce words: just delete them
+    recce = recce.filter((r) => !(n.recce || []).includes(r.id)); saveRecce();
+    $('fixSheet').hidden = true; regen('Recce note removed'); return;
+  }
   fixes = fixes.filter((f) => f.id !== n.fixed && segLen([f.lat, f.lon], [n.lat, n.lon]) > 15); // replaces an older fix here
   fixes.push({ id: Date.now().toString(36), lat: n.lat, lon: n.lon, was: typeof n.grade === 'number' ? n.grade : null, ...fx });
   saveFixes(); $('fixSheet').hidden = true;
-  regen(fx.none ? 'Removed — this corner won’t be called again' : `Saved — next time: ${fx.shape ? `${fx.shape} ${n.dir}` : fixWords(n, fx.grade).toLowerCase()}`);
+  regen(fx.none ? 'Removed — this call won’t be made again' : `Saved — next time: ${fx.shape ? `${fx.shape} ${n.dir}` : fixWords(n, fx.grade).toLowerCase()}`);
   paintCal();
 }
 $('fixGrades').addEventListener('click', (e) => {
@@ -1702,3 +1711,75 @@ $('huntContinue').onclick = async () => {
 $('huntStop').onclick = () => { $('huntDoneSheet').hidden = true; };
 $('plPark').onclick = () => openHunt([curPlace.lat, curPlace.lon], `${curPlace.icon} ${curPlace.name}`);
 $('btnHunt').onclick = () => { if (S.route) openHunt(S.route.dest || S.route.points.at(-1), S.route.spec?.name?.replace(/^To /, '') || 'your destination'); };
+
+// ---------- 🔍 review all the calls on the map ----------
+let rv = 0;
+function startReview() {
+  if (!S.route) return toast('Make a route first');
+  if (S.nav) stopNav();
+  if (S.mode === 'edit') endEdit(true);
+  S.mode = 'review'; document.body.classList.add('reviewing');
+  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
+  $('bar').hidden = true; $('routeChip').hidden = true; $('attrib').hidden = true;
+  $('reviewBar').hidden = false; $('crosshair').hidden = false;
+  setRotation(0); map.dragging.enable();
+  drawRoute(false);
+  reviewGo(0);
+  toast('◀ ▶ to check each call · tap a dot to jump to it · put the ⊕ where a call is missing and tap ＋ Add', 5000);
+}
+function endReview() {
+  S.mode = 'idle'; document.body.classList.remove('reviewing');
+  $('reviewBar').hidden = true; $('crosshair').hidden = true; $('bar').hidden = false; $('attrib').hidden = false;
+  S.reviewRing?.remove(); S.reviewRing = null;
+  drawRoute(false); fitVisible(S.routeLayer.getBounds()); paintSummary();
+}
+function reviewGo(i) {
+  const N = S.route.notes; if (!N.length) return;
+  rv = ((i % N.length) + N.length) % N.length;
+  const n = N[rv];
+  S.reviewFocus = [n.lat, n.lon];
+  // centre it above the review bar
+  const z = Math.max(map.getZoom(), 16.5), pt = map.project([n.lat, n.lon], z).add([0, 110]);
+  map.setView(map.unproject(pt, z), z, { animate: true });
+  S.reviewRing?.remove();
+  S.reviewRing = L.circleMarker([n.lat, n.lon], { radius: 18, color: '#ffcc00', weight: 3, fill: false, interactive: false, className: 'review-ring' }).addTo(map);
+  const { main, sub } = splitCall(n, n.label);
+  $('rvCount').textContent = `${rv + 1} / ${N.length}`;
+  $('rvMain').textContent = main;
+  const prev = N[rv - 1], gap = prev ? Math.max(0, n.sStart - prev.sEnd) : n.sStart;
+  $('rvSub').textContent = [sub, `${fmtDist(gap)} after the ${prev ? 'previous call' : 'start'}`, n.added ? 'added by you' : n.fixed ? 'fixed by you' : ''].filter(Boolean).join(' · ');
+}
+function reviewNear(ll) {
+  if (!ll || !S.route?.notes.length) return reviewGo(0);
+  let bi = 0, bd = Infinity;
+  S.route.notes.forEach((n, i) => { const d = segLen(ll, [n.lat, n.lon]); if (d < bd) { bd = d; bi = i; } });
+  reviewGo(bi);
+}
+$('rvPrev').onclick = () => reviewGo(rv - 1);
+$('rvNext').onclick = () => reviewGo(rv + 1);
+$('rvEdit').onclick = () => openFix(S.route.notes[rv]);
+$('rvRemove').onclick = () => { fixTarget = S.route.notes[rv]; S.reviewFocus = [fixTarget.lat, fixTarget.lon]; saveFix({ none: true }); };
+$('rvDone').onclick = endReview;
+$('btnReview').onclick = startReview;
+$('notesReview').onclick = startReview;
+
+// add a call where the app had none: at the ⊕ in the middle of the map
+let addAt = null;
+const addWords = (dir, g) => (g === 'H' ? `Hairpin ${dir}` : g === 'F' ? `Flat ${dir}` : g === 'square' || g === 'acute' ? `${g[0].toUpperCase() + g.slice(1)} ${dir}` : `${dir[0].toUpperCase() + dir.slice(1)} ${g}`);
+$('rvAdd').onclick = () => {
+  const c = map.getCenter(); addAt = [c.lat, c.lng];
+  if (distToPolyline(S.route.points, addAt) > 30) return toast('Move the map so the ⊕ sits on the route line, then tap ＋ Add');
+  const opts = ['H', 1, 2, 3, 4, 5, 6, 'F', 'square', 'acute'];
+  $('addGrades').innerHTML = ['left', 'right'].map((dir) =>
+    `<div class="add-col"><h3 class="sub">${dir === 'left' ? '⬅ Left' : 'Right ➡'}</h3>${opts.map((g) => `<button data-dir="${dir}" data-g="${g}">${addWords(dir, g)}</button>`).join('')}</div>`).join('');
+  openSheet('addSheet');
+};
+$('addGrades').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !addAt) return;
+  const g = b.dataset.g, fx = { id: Date.now().toString(36), add: true, dir: b.dataset.dir, lat: addAt[0], lon: addAt[1], was: null };
+  if (g === 'square' || g === 'acute') fx.shape = g; else fx.grade = g === 'H' || g === 'F' ? g : +g;
+  fixes.push(fx); saveFixes();
+  $('addSheet').hidden = true; S.reviewFocus = addAt;
+  regen(`Added: ${addWords(fx.dir, g).toLowerCase()}`);
+});
+$('addWordsOnly').onclick = () => { $('addSheet').hidden = true; S.reviewFocus = addAt; openRecce({ lat: addAt[0], lon: addAt[1] }); };

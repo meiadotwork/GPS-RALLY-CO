@@ -251,8 +251,9 @@ test('calls come one note at a time by default; read-ahead chains are optional',
     return calls;
   };
   const single = run('single');
-  assert.ok(single.every((c) => c.from === c.to), 'a call carried more than one note');
-  assert.equal(single.length, gen.notes.length);              // every note still called
+  // one note per call, except corners that run into each other (< 45 m) which share a call
+  for (const c of single) for (let k = c.from; k < c.to; k++) assert.ok(gen.notes[k].gapNext < 45, 'unlinked notes chained');
+  assert.equal(single.reduce((n, c) => n + c.to - c.from + 1, 0), gen.notes.length); // every note still called
   assert.ok(single.every((c) => c.distToNote > 0));          // each before its corner
   assert.ok(run('ahead').some((c) => c.to > c.from));         // chaining still available
 });
@@ -415,4 +416,31 @@ test('big radius: planned in batches, nearest first, continuing where the last b
   assert.equal(h.remaining, 0);
   assert.equal(all, h.total);                                     // every street, once, across the batches
   assert.ok(firstAvg < 600, `first batch stays near the destination (${Math.round(firstAvg)} m)`);
+});
+
+test('S-bends: a junction keeps the bend the other way, and linked corners are read together', () => {
+  // straight, junction square right, 25 m later a left bend (an S), straight
+  let p = [40.83, -73.92], brg = 0; const pts = [p];
+  const go = (d) => { for (let x = 0; x < d; x += 10) { p = offsetPoint(p, brg, Math.min(10, d - x)); pts.push(p); } };
+  const arc = (R, a) => { const L = R * Math.abs(a) * Math.PI / 180; for (let d = 0; d < L; d += 3) { const st = Math.min(3, L - d), dt = (st / R) * 180 / Math.PI * Math.sign(a); p = offsetPoint(p, brg + dt / 2, st); brg += dt; pts.push(p); } };
+  go(300); const jn = p; const b1 = brg; brg += 90; go(25); arc(25, -80); go(300);
+  const steps = [{ maneuver: { type: 'turn', modifier: 'right', location: [jn[1], jn[0]], bearing_before: b1, bearing_after: b1 + 90 } }];
+  const N = generatePaceNotes(pts, { steps }).notes.filter((n) => n.kind !== 'finish');
+  assert.ok(N.some((n) => n.kind === 'junction' && n.dir === 'right'));
+  assert.ok(N.some((n) => n.kind === 'corner' && n.dir === 'left'), N.map((n) => n.label).join(' | '));
+  // one-at-a-time still reads the pair in one breath
+  const sch = new CallScheduler(N, { chain: 'single' });
+  let call = null; for (let s = 0; s < 400 && !call; s += 5) call = sch.update(s, 15);
+  assert.ok(call.to > call.from, call.text);
+  assert.match(call.text, / (into|and) /);
+});
+
+test('review edits: add a call where none was, remove a crest', () => {
+  const mid = gen.samples[Math.round(2700 / 5)];                         // on a straight
+  const added = generatePaceNotes(stage.points, { steps: stage.steps, fixes: [{ id: 'a1', add: true, dir: 'left', grade: 4, lat: mid.lat, lon: mid.lon }] });
+  assert.ok(added.notes.some((n) => n.added && n.label === 'left 4'));
+  const withHills = generatePaceNotes(stage.points, { steps: stage.steps, elevation: stage.elevation });
+  const crest = withHills.notes.find((n) => n.label === 'crest');
+  const noCrest = generatePaceNotes(stage.points, { steps: stage.steps, elevation: stage.elevation, fixes: [{ id: 'r1', none: true, lat: crest.lat, lon: crest.lon }] });
+  assert.ok(!noCrest.notes.some((n) => n.label === 'crest'));
 });

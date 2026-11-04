@@ -347,7 +347,7 @@ function junctionNotes(samples, steps, corners, opt = {}) {
       case 'arrive': out.push({ ...base, kind: 'finish', dir: null, angle: null, shape: 'finish', text: 'finish', sStart: s, sEnd: s }); break;
       default: return; // depart, new name, notification, exit roundabout...
     }
-    if (m.type !== 'arrive') suppress.push([s - 30, s + 30]);
+    if (m.type !== 'arrive') suppress.push([s - 30, s + 30, out.at(-1)?.dir || null, s]);
   });
   return { notes: out, suppress };
 }
@@ -503,12 +503,26 @@ function sampleAt(samples, s, step) {
 const shiftGrade = (g, off) => (typeof g === 'number' && off ? Math.max(1, Math.min(6, g + off)) : g);
 
 /**
- * Your corrections: [{ id, lat, lon, grade?: 1..6|'H'|'F', shape?: 'square'|'acute', none?: true }].
+ * Your corrections: [{ id, lat, lon, grade?: 1..6|'H'|'F', shape?: 'square'|'acute', none?: true,
+ *   add?: true, dir?: 'left'|'right' }].
  * A fix applies to the corner (or junction) within 25 m of where it was made, on any route that passes.
+ * add: a call you added where the app had none (placed on the route within 30 m).
  */
 function applyFixes(notes, samples, opt) {
   const off = opt.gradeOffset || 0;
   for (const fx of opt.fixes || []) {
+    if (fx.add) {
+      const near = notes.find((n) => (n.kind === 'corner' || n.kind === 'junction') && segLen([fx.lat, fx.lon], [n.lat, n.lon]) < 15);
+      if (!near) {
+        let bi = -1, bd2 = 30;
+        for (let i = 0; i < samples.length; i++) { const d = segLen([fx.lat, fx.lon], [samples[i].lat, samples[i].lon]); if (d < bd2) { bd2 = d; bi = i; } }
+        if (bi < 0) continue; // not on this route
+        const at = samples[bi];
+        notes.push({ kind: 'corner', dir: fx.dir, grade: fx.shape ? 1 : fx.grade, shape: fx.shape, mods: [], kink: false, angle: null,
+          sStart: Math.max(0, at.s - 10), sEnd: at.s + 10, sApex: at.s, lat: at.lat, lon: at.lon, fixed: fx.id, added: true });
+        continue;
+      }
+    }
     let best = null, bd = 25;
     for (const n of notes) {
       if (n.kind !== 'corner' && n.kind !== 'junction') continue;
@@ -519,6 +533,7 @@ function applyFixes(notes, samples, opt) {
     best.fixed = fx.id;
     if (fx.none) { best.removed = true; continue; }
     best.kind = 'corner'; delete best.text; // a fixed junction is called like a corner
+    if (fx.dir) best.dir = fx.dir;
     if (fx.shape) { best.shape = fx.shape; best.grade = 1; }
     else { delete best.shape; delete best.chicane; best.grade = fx.grade; }
     best.kink = fx.grade === 'F' && best.kink;
@@ -526,6 +541,7 @@ function applyFixes(notes, samples, opt) {
     best.exitGrade = null;
   }
   for (let i = notes.length - 1; i >= 0; i--) if (notes[i].removed) notes.splice(i, 1);
+  notes.sort((a, b) => a.sStart - b.sStart);
   if (off) for (const n of notes) {
     if (n.kind !== 'corner' || n.fixed) continue;
     n.grade = shiftGrade(n.grade, off);
@@ -603,6 +619,14 @@ function decorate(notes, samples, kappa, opt) {
     else if (!at.host) standalone('camera', words.join(', '), at, { cams: [[c.lat, c.lon]] });
   }
 
+  // calls you removed that aren't corners (crest, dip, camera, tunnel): drop them too
+  for (const fx of opt.fixes || []) {
+    if (!fx.none) continue;
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const n = notes[i];
+      if (['vertical', 'camera', 'feature'].includes(n.kind) && segLen([fx.lat, fx.lon], [n.lat, n.lon]) < 25) notes.splice(i, 1);
+    }
+  }
   notes.sort((a, b) => a.sStart - b.sStart);
   return chicanes(notes);
 }
@@ -633,7 +657,9 @@ function rawNotes(samples, kappa, steps, opt) {
   if (steps && steps.length) {
     const j = junctionNotes(samples, steps, corners, opt);
     junctions = j.notes;
-    corners = corners.filter((c) => !j.suppress.some(([a, b]) => c.sEnd > a && c.sStart < b));
+    // a junction replaces its own corner, not the bend the other way right after it (S-bends)
+    corners = corners.filter((c) => !j.suppress.some(([a, b, dir, at]) => c.sEnd > a && c.sStart < b &&
+      (!dir || c.dir === dir || Math.abs(c.sApex - at) < 12)));
   }
   return [...corners, ...junctions].sort((a, b) => a.sStart - b.sStart);
 }

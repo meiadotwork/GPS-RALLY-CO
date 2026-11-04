@@ -81,7 +81,13 @@ export class CallScheduler {
   }
   // Which notes would be read in one breath starting at i, at speed v.
   chainFrom(i, v) {
-    if (this.opts.chain !== 'ahead') return i; // one note per call, spoken just before it
+    if (this.opts.chain !== 'ahead') {
+      // one call at a time — but corners that run straight into each other (S-bends) are read
+      // together, like a co-driver does ("left 4 into right 3"); otherwise the second one is missed
+      let j = i;
+      while (j < this.count - 1 && j - i < 2 && (this.noteAt(j).gapNext ?? Infinity) < 45) j++;
+      return j;
+    }
     const window = Math.max(100, v * 3);
     let j = i;
     while (j < this.count - 1 && j - i < 3) {

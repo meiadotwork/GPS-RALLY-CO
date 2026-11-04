@@ -247,3 +247,24 @@ h3.new-head { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 
 
 .draw-pt { border-color: #4aa3ff; }
 .draw-pt.last { font-size: 10px; }
+
+/* review */
+#reviewBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 18px; padding: 10px; backdrop-filter: blur(6px); }
+.rv-top { display: flex; align-items: center; gap: 10px; }
+.rv-txt { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; }
+#rvCount { color: var(--dim); font-size: 13px; }
+#rvMain { font-size: 30px; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+#rvSub { color: var(--dim); font-size: 13px; }
+.rv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.rv-actions .pill { min-height: 44px; padding: 8px; }
+#crosshair { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 640; font-size: 40px; color: #ff5a3c; pointer-events: none;
+  text-shadow: 0 0 4px #000, 0 0 8px #000; line-height: 1; }
+.note-dot.mine { background: #b67cff; }
+.note-dot.fixed { box-shadow: 0 0 0 3px #b67cff; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.add-col { display: flex; flex-direction: column; gap: 6px; }
+.add-col button { border: 1px solid var(--line); background: transparent; border-radius: 12px; padding: 11px; font-weight: 700; font-size: 15px; }
+.add-col .sub { margin: 4px 0; }
+
+body.reviewing #toast { bottom: auto; top: calc(16px + var(--safe-t)); }

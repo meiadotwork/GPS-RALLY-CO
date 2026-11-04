@@ -176,6 +176,19 @@ If a call was wrong, tap **✎ Fix** on the driving screen. A passenger should d
 - Your fixes stay on this phone (`codriver.fixes`). **Remove my fix** undoes one.
 - **Settings → Grade calibration** (Tighter / As measured / Faster) shifts every numbered call by one grade. Corners you fixed keep your grade. The hint under it averages your fixes and suggests a setting, e.g. "calls are on average 0.8 grade too fast — suggested: Tighter".
 
+## 🔍 Review the calls on the map
+
+**Route → 🔍 Review notes on map**, or from Stage notes. This shows every call on the map with its label and steps through them with **◀ ▶**; the map zooms to each one. You can also tap any dot. For each call:
+- **✎ Change** the grade or shape, or add recce words.
+- **🔇 Remove** it if it's unnecessary. This works for corners, junctions, crests, dips, cameras and tunnels; removing a recce-only note deletes its words.
+- **＋ Add at ⊕**: move the map so the red ⊕ sits on the route where a call is missing, then pick Left/Right and the type (hairpin, 1–6, flat, square, acute) or words only.
+
+Everything is saved by location (`codriver.fixes`), so it applies to every route through that spot. Calls you added are purple, and calls you fixed have a purple ring.
+
+**S-bends:**
+- In "one call at a time" mode, corners that run into each other (under 45 m apart) are read in one call ("left 4 into right 3"). Before, the second call could be dropped while the first was still being spoken.
+- A junction now only replaces its own corner. A bend the other way straight after it is kept.
+
 ## Ghost lap
 
 Your best run is recorded as a trace of (time, distance), roughly every 5 m or every second. On a circuit, your best **lap** is kept, timed from the line. Next time:

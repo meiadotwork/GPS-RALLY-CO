@@ -73,6 +73,7 @@
       <button id="btnEdit" class="pill ghost">✎ Edit points</button>
       <button id="btnShare" class="pill ghost">Share link</button>
       <button id="btnNotes" class="pill ghost">Stage notes</button>
+      <button id="btnReview" class="pill ghost">🔍 Review notes on map</button>
     </div>
     <div class="row"><label class="sim">Simulate
       <select id="simSpeed"><option value="0">off</option><option value="60">60</option><option value="90">90</option><option value="120">120</option></select>
@@ -115,6 +116,30 @@
   <button id="editDone" class="pill">Done</button>
   <button id="editCancel" class="pill ghost">Cancel</button>
 </div>
+
+<!-- review the calls on the map -->
+<div id="crosshair" hidden>⊕</div>
+<div id="reviewBar" hidden>
+  <div class="rv-top">
+    <button id="rvPrev" class="round">◀</button>
+    <div class="rv-txt"><small id="rvCount"></small><b id="rvMain"></b><small id="rvSub"></small></div>
+    <button id="rvNext" class="round">▶</button>
+  </div>
+  <div class="rv-actions">
+    <button id="rvEdit" class="pill ghost">✎ Change</button>
+    <button id="rvRemove" class="pill ghost">🔇 Remove</button>
+    <button id="rvAdd" class="pill ghost">＋ Add at ⊕</button>
+    <button id="rvDone" class="pill go">Done</button>
+  </div>
+</div>
+
+<!-- add a call -->
+<section id="addSheet" class="sheet tall" hidden>
+  <header><h2>Add a call at ⊕</h2><button class="close" data-close>✕</button></header>
+  <div id="addGrades" class="add-grid"></div>
+  <div class="row"><button id="addWordsOnly" class="pill ghost">Words only (crest, rocks, bumps…)</button></div>
+  <p class="fine">Saved by location, like your fixes — every route through here gets this call.</p>
+</section>
 
 <!-- countdown -->
 <div id="countdown" hidden><span id="cdNum">3</span></div>
@@ -267,6 +292,7 @@
 <!-- notes list -->
 <section id="notesSheet" class="sheet tall" hidden>
   <header><h2>Stage notes</h2><button class="close" data-close>✕</button></header>
+  <div class="row" style="margin-top:0"><button id="notesReview" class="pill ghost">🔍 Review them on the map</button></div>
   <ol id="notesList"></ol>
 </section>
 
