@@ -508,6 +508,7 @@ function drawRoute(fit) {
     const m = L.marker([n.lat, n.lon], { icon: L.divIcon({ className: `note-dot ${cls}${mine}`, iconSize: [show ? 14 : 16, show ? 14 : 16] }), interactive: !show || reviewing })
       .bindTooltip(n.label, { permanent: show, direction: 'right', offset: [8, 0], className: 'note-tip' });
     if (reviewing) m.on('click', (e) => { L.DomEvent.stopPropagation(e); reviewGo(S.route.notes.indexOf(n)); });
+    else m.on('click', () => { if (S.nav && !document.body.classList.contains('map-full')) enterMapFull(); }); // driving: a dot is part of the map
     return m;
   })).addTo(map);
   S.notes_cams = S.route.notes.flatMap((n) => n.cams || []);
@@ -575,7 +576,7 @@ map.on('contextmenu', (e) => { // long-press
   };
 });
 map.on('click', (e) => {
-  if (S.nav) return;
+  if (S.nav) { if (!document.body.classList.contains('map-full')) enterMapFull(); return; } // driving: tap the map → full-screen map
   const ll = [e.latlng.lat, e.latlng.lng];
   if (S.mode === 'edit') return editAppend(ll);
   if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
@@ -989,6 +990,7 @@ function countdown(go) {
 
 function stopNav() {
   S.nav = false;
+  document.body.classList.remove('np-full', 'map-full'); $('mapBack').hidden = true;
   S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
   clearInterval(S.clockTimer); S.clockTimer = null;
@@ -1533,7 +1535,8 @@ $('fixUndo').onclick = () => {
 };
 $('fixRecce').onclick = () => { const n = fixTarget; $('fixSheet').hidden = true; openRecce({ lat: n.lat, lon: n.lon, note: n }); };
 // while driving: fix the call that was just made (or the one coming up)
-$('fixBtn').onclick = () => openFix(S.lastCalled || S.sched?.upcoming(S.route.loop ? S.sU : S.lastOnRouteS || 0)?.note);
+$('fixBtn').onclick = (e) => { e.stopPropagation(); fixLast(); };
+const fixLast = () => openFix(S.lastCalled || S.sched?.upcoming(S.route.loop ? S.sU : S.lastOnRouteS || 0)?.note);
 
 // calibration: your fixes tell us if the grades run fast or slow for you
 function paintCal() {
@@ -1866,3 +1869,28 @@ async function stopRec(save) {
 $('btnRecord').onclick = startRec;
 $('recStop').onclick = () => stopRec(true);
 $('recDiscard').onclick = () => stopRec(false);
+
+// ---------- full screen while driving: tap the call → just the call; tap the map → just the map ----------
+$('notepanel').addEventListener('click', () => {
+  if (!S.nav) return;
+  if (document.body.classList.contains('map-full')) return exitMapFull(); // the strip at the top takes you back
+  document.body.classList.toggle('np-full');
+});
+function enterMapFull() {
+  document.body.classList.remove('np-full');
+  document.body.classList.add('map-full');
+  $('mapBack').hidden = false;
+  S.follow = false; paintCompass?.();
+  setRotation(0);
+  map.dragging.enable(); map.touchZoom.enable(); map.doubleClickZoom.enable(); map.scrollWheelZoom.enable();
+  setTimeout(() => map.invalidateSize(false), 50);
+}
+function exitMapFull() {
+  document.body.classList.remove('map-full');
+  $('mapBack').hidden = true;
+  S.follow = true;
+  if (S.headingUp) map.dragging.disable();
+  paintCompass?.();
+  if (S.fix) followCam(S.fix.lat, S.fix.lon);
+}
+$('mapBack').onclick = (e) => { e.stopPropagation(); exitMapFull(); };

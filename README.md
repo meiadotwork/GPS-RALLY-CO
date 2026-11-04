@@ -234,6 +234,11 @@ Places, routes, recce notes, fixes, ghosts and best times are stored in the brow
 - Names are typed in an in-app box, not the browser's `prompt()`, which some Home Screen apps and in-app browsers block.
 - **Settings → Backup → Export** saves everything to `codriver-backup-YYYY-MM-DD.json` (on iPhone via the share sheet: Save to Files, AirDrop…). **Import** merges a backup back in: places, routes, notes and fixes by id, and ghosts and best times keeping the faster one. Use it to restore, or to move to another phone.
 
+## Full screen while driving
+
+- **Tap the arrow or the call text** → only the call, full screen: huge arrow, call and distance, with details below. Tap again for the normal view.
+- **Tap the map** (a note's dot counts) → the map goes full screen, unrotated, and you can **pinch-zoom and drag** freely. Following pauses, and a slim strip at the top keeps showing the current call. **Tap the strip** or **↩ Back to driving** to return, and the map re-centres on you and follows again. A second tap on the map doesn't exit, because pinching and dragging would trigger it.
+
 ## Your position
 
 Your position is always on the map, not only while driving. It shows a blue dot with a GPS-accuracy circle when you're standing still, and an arrow when you're moving. **◎** centres the map on you. While driving, that button switches between heading-up and north-up as before.

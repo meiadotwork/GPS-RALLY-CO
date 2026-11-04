@@ -276,3 +276,24 @@ body.reviewing #toast { bottom: auto; top: calc(16px + var(--safe-t)); }
 #recBar .pill.danger { background: var(--warn); color: #fff; }
 
 .add-pin { background: #b67cff; color: #fff; border: 3px solid #fff; border-radius: 50%; display: grid; place-items: center; font: 900 20px/1 system-ui; box-shadow: 0 2px 8px #000a; }
+
+/* ---- full screen while driving ---- */
+body.nav #notepanel { cursor: pointer; }
+/* the call, full screen: huge arrow, call and distance */
+body.np-full #notepanel { inset: 0; top: 0; left: 0; right: 0; bottom: 0; border-radius: 0; z-index: 900; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; padding: calc(20px + var(--safe-t)) 16px calc(20px + var(--safe-b)); background: #0d0f12; }
+body.np-full #notepanel #glyph { width: min(72vw, 38vh); height: min(72vw, 38vh); }
+body.np-full #notepanel #noteBig { font-size: clamp(60px, 19vw, 120px); }
+body.np-full #notepanel #noteDist { font-size: clamp(60px, 19vw, 120px); }
+body.np-full #notepanel #noteSub { font-size: 24px; }
+body.np-full #notepanel #noteNext { font-size: 22px; }
+body.np-full #bar, body.np-full #attrib { display: none; }
+/* the map, full screen: free to zoom and pan; a slim strip keeps the current call */
+body.map-full #notepanel { padding: 6px 10px; display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; text-align: left; }
+body.map-full #notepanel #glyph { width: 52px; height: 52px; margin: 0; grid-row: span 2; }
+body.map-full #notepanel #noteBig { font-size: 26px; margin: 0; }
+body.map-full #notepanel #noteDist { font-size: 22px; margin: 0; }
+body.map-full #notepanel :is(#noteSub, #noteNext, #lastCall, .np-stats, #fixBtn) { display: none; }
+body.map-full #bar { display: none; }
+#mapBack { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(22px + var(--safe-b)); z-index: 700; padding: 14px 22px; font-size: 18px; box-shadow: 0 4px 14px #000a; }
+#mapBack { white-space: nowrap; }
