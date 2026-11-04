@@ -422,3 +422,8 @@ body.skin-arcade #routeChip .pill { padding: 8px 10px; font-size: 10px; }
 body.skin-arcade #toast { font-size: 11px; line-height: 1.6; border-radius: 0; }
 body.skin-arcade #searchInput, body.skin-arcade #routeName { border-radius: 0; font-size: 11px; }
 body.skin-dots #toast, body.skin-trip #toast { border-radius: 0; }
+/* Arcade: completely flat — no shadows anywhere */
+body.skin-arcade *, body.skin-arcade *::before, body.skin-arcade *::after { box-shadow: none !important; text-shadow: none !important; }
+body.skin-arcade #glyph path, body.skin-arcade #me svg, body.skin-arcade .me-marker svg, body.skin-arcade .cam-pin { filter: none !important; }
+body.skin-arcade #notepanel, body.skin-arcade #bar, body.skin-arcade #routeChip { border: 4px solid #fff; margin: 0; }
+body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: round; } /* square caps made the arrow tip jagged */
