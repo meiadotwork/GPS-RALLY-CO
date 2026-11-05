@@ -135,7 +135,7 @@ export class CallScheduler {
     const i = this.next, j = this.chainFrom(i, v);
     const chain = [];
     for (let k = i; k <= j; k++) chain.push(this.noteAt(k));
-    const text = chainText(chain, 0, chain.length - 1, this.opts.units);
+    const text = chainText(chain, 0, chain.length - 1, this.opts.units, { distances: this.opts.dists === 'on' });
     const dist = chain[0].sStart - s;
     const trig = this.triggerDistance(text, v);
     if (dist > trig) return null;

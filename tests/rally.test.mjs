@@ -26,7 +26,7 @@ test('grading scale', () => {
   assert.equal(gradeFor(effectiveRadius(9, 175), 175), 'H');
   assert.equal(gradeFor(effectiveRadius(30, 90), 90), 3);
   assert.equal(gradeFor(effectiveRadius(60, 15), 15), null); // flat kink
-  assert.equal(chainText(gen.notes, 1, 2), 'Left 4 into right 3, 200');
+  assert.equal(chainText(gen.notes, 1, 2, 'metric', { distances: true }), 'Left 4 into right 3, 200');
 });
 
 test('faster driving triggers calls earlier', () => {
@@ -577,4 +577,36 @@ test('a locked finish (checkpoints still to pass) doesn’t end the run; it fini
   assert.equal(r.state, 'running');
   r.locked = false;
   assert.equal(r.update(6000, 995, 10)[0].type, 'finish');
+});
+
+import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from '../board.js';
+test('leaderboard: ranks runs, circuits by best lap, delete one or all, merge backups', () => {
+  let B = {};
+  const meta = { name: 'Morning stage', loop: false, total: 5000 };
+  let r = addRun(B, 'k1', meta, { id: 'a', ms: 300000, date: 1 }); B = r.boards;
+  assert.equal(r.rank, 1); assert.ok(r.isBest);
+  r = addRun(B, 'k1', meta, { id: 'b', ms: 280000, date: 2 }); B = r.boards;
+  assert.equal(r.rank, 1); assert.equal(r.prevBest.id, 'a');
+  r = addRun(B, 'k1', meta, { id: 'c', ms: 290000, date: 3 }); B = r.boards;
+  assert.equal(r.rank, 2); assert.equal(r.of, 3);
+  assert.deepEqual(ranked(B.k1).map((e) => e.id), ['b', 'c', 'a']);
+  // circuits: best lap wins, not total time
+  const lap = { name: 'Block', loop: true, total: 1200 };
+  B = addRun(B, 'k2', lap, { id: 'x', ms: 400000, best: 95000, lapsN: 4, date: 4 }).boards;
+  B = addRun(B, 'k2', lap, { id: 'y', ms: 200000, best: 99000, lapsN: 2, date: 5 }).boards;
+  assert.deepEqual(ranked(B.k2).map((e) => e.id), ['x', 'y']);
+  assert.equal(boardList(B)[0].key, 'k2');                         // most recently driven first
+  B = removeRun(B, 'k1', 'b');
+  assert.deepEqual(ranked(B.k1).map((e) => e.id), ['c', 'a']);
+  B = removeRun(removeRun(B, 'k1', 'c'), 'k1', 'a');
+  assert.ok(!B.k1);                                                // last run gone → board gone
+  B = removeBoard(B, 'k2'); assert.deepEqual(B, {});
+  const m = mergeBoards({ k: { loop: false, entries: [{ id: '1', ms: 5, date: 1 }] } }, { k: { loop: false, entries: [{ id: '1', ms: 5, date: 1 }, { id: '2', ms: 3, date: 2 }] } });
+  assert.deepEqual(ranked(m.k).map((e) => e.id), ['2', '1']);
+});
+
+test('calls: no distance numbers between notes unless switched on', () => {
+  assert.equal(chainText(gen.notes, 1, 2), 'Left 4 into right 3');            // default: no "200"
+  assert.equal(chainText(gen.notes, 1, 2, 'metric', { distances: true }), 'Left 4 into right 3, 200');
+  assert.equal(chainText(gen.notes, 0, 0), chainText(gen.notes, 0, 0).replace(/, \d+$/, ''));
 });

@@ -404,14 +404,16 @@ export function linkFor(gapM, units = 'metric') {
   return { type: 'dist', say: 'long straight' };
 }
 
-// Join notes[i..j] into one breath, co-driver style. Trailing distance included.
-export function chainText(notes, i, j, units = 'metric') {
+// Join notes[i..j] into one breath, co-driver style. Short links (into / and / then) are always said;
+// the straight's length ("200", "400"…) only with distances: true.
+export function chainText(notes, i, j, units = 'metric', { distances = false } = {}) {
   let out = '';
   for (let k = i; k <= j; k++) {
     const n = notes[k];
     out += n.label ?? noteText(n);
     const l = linkFor(n.gapNext, units);
     if (l.type === 'none') break;
+    if (l.type === 'dist' && !distances) { if (k < j) out += ', '; continue; }
     if (k < j) out += l.type === 'dist' ? `, ${l.say}, ` : ` ${l.say} `;
     else out += l.type === 'dist' ? `, ${l.say}` : ` ${l.say}`;
   }

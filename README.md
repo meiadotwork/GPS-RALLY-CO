@@ -245,6 +245,20 @@ Places, routes, recce notes, fixes, ghosts and best times are stored in the brow
 - Names are typed in an in-app box, not the browser's `prompt()`, which some Home Screen apps and in-app browsers block.
 - **Settings → Backup → Export** saves everything to `codriver-backup-YYYY-MM-DD.json` (on iPhone via the share sheet: Save to Files, AirDrop…). **Import** merges a backup back in: places, routes, notes and fixes by id, and ghosts and best times keeping the faster one. Use it to restore, or to move to another phone.
 
+## 🏆 Leaderboard
+
+Every finished run is recorded on that route's leaderboard on this phone (`board.js`, stored as `codriver.board`):
+- **Stages (A→B)** rank by time. **Circuits** rank by **best lap**, so a 2-lap run and a 5-lap run compare fairly. Each row also shows the laps and the total time. Time-attack laps have their own board.
+- Open it from **Route → 🏆 Leaderboard**, from the route page, or from the results card. The route you're on is listed first. The results card tells you your place, e.g. "🏆 P2 of 5".
+- **Delete:** tap ✕ on a time **twice** to delete it, or 🗑 **twice** to clear that route's board. The second tap guards against accidents.
+- **Drive it** loads that route again.
+- Keeps the 25 best per route. Included in **Export backup**, and imports merge without duplicates.
+- **Simulated runs are never recorded**: no leaderboard entry, personal best or ghost. The results card says "🧪 Simulation — not recorded".
+
+## Distances in the calls
+
+By default the calls **don't say the distance to the next call** ("left 4, 200, right 3" becomes "left 4, right 3"). The short links "into", "and" and "then" are still said, because they tell you corners come close together. **Settings → Distance between calls → Say it** brings the numbers back.
+
 ## Looks (skins)
 
 **Settings → Look** picks the style. The app remembers your choice.

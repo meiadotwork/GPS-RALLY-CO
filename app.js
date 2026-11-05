@@ -5,6 +5,7 @@ import { specToHash, hashToSpec } from './share.js';
 import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js';
 import { overpassQuery, buildGraph, planHunt } from './parking.js';
 import { finishRecording } from './record.js';
+import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
@@ -17,7 +18,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -727,6 +728,8 @@ bindSeg('setScale', 'scale');
 bindSeg('setCams', 'cams');
 bindSeg('setStreets', 'streets');
 bindSeg('setLabels', 'labels');
+bindSeg('setDists', 'dists');
+$('setDists').addEventListener('click', () => toast(settings.dists === 'on' ? 'Calls say the distance to the next one (“…, 200, right 3”)' : 'No distance numbers in the calls'));
 bindSeg('setChain', 'chain');
 
 $('setChain').addEventListener('click', () => toast(settings.chain === 'ahead' ? 'Calls: reading ahead (linked notes together)' : 'Calls: one note at a time'));
@@ -739,7 +742,7 @@ $('setRate').oninput = (e) => { settings.rate = +e.target.value; $('rateVal').te
 $('setVoice').onchange = (e) => { settings.voice = e.target.value; saveSettings(); };
 $('btnTestVoice').onclick = () => speak('Left 5, 100, into right 3 tightens. Hairpin left, don\'t cut.', true);
 function applySettings() {
-  S.sched?.set({ callAhead: settings.callAhead, rate: settings.rate, units: settings.units });
+  S.sched?.set({ callAhead: settings.callAhead, rate: settings.rate, units: settings.units, dists: settings.dists });
   $('speedUnit').textContent = settings.units === 'imperial' ? 'mph' : 'km/h';
   if (S.route) paintSummary();
 }
@@ -805,15 +808,17 @@ function glyph(n) {
 
 // ---------- navigation ----------
 function onFix(f) {
-  const now = f.t || Date.now();
+  // race clock, lap times and timers all use the phone's clock (the same one GO used); the GPS timestamp
+  // (which can be on another clock) is only used for speed between fixes
+  const now = Date.now(), ft = f.t || now;
   // speed: device value if present, otherwise from successive fixes
   let v = f.speed;
   if ((v == null || isNaN(v)) && S.prevFix) {
-    const dt = (now - S.prevFix.t) / 1000;
+    const dt = (ft - S.prevFix.t) / 1000;
     v = dt > 0 ? segLen([S.prevFix.lat, S.prevFix.lon], [f.lat, f.lon]) / dt : 0;
   }
   S.speed = S.speed * 0.4 + (v || 0) * 0.6;
-  S.prevFix = { lat: f.lat, lon: f.lon, t: now };
+  S.prevFix = { lat: f.lat, lon: f.lon, t: ft };
   S.fix = f;
 
   const loc = S.tracker.locate(f.lat, f.lon);
@@ -880,7 +885,8 @@ function onFix(f) {
     $('noteBig').classList.toggle('caution', !!up.note.mods?.some((m) => m.includes('caution')));
     $('noteDist').textContent = up.dist > 0 ? fmtDist(up.dist) : 'NOW';
     const l = linkFor(up.note.gapNext, settings.units);
-    $('noteNext').textContent = up.next ? `${l.say ? l.say + ' · ' : ''}${up.next.label}` : '';
+    const ls = l.type === 'dist' && settings.dists !== 'on' ? '' : l.say;
+    $('noteNext').textContent = up.next ? `${ls ? ls + ' · ' : ''}${up.next.label}` : '';
   }
   {
     const L = S.route.total, left = S.route.loop ? L - (((sNow % L) + L) % L) : Math.max(0, L - loc.s);
@@ -918,7 +924,7 @@ function onRaceEvent(e) {
     if (left === 1) msg += ' Last lap!';
     if (left !== 0) speak(msg);
   } else if (e.type === 'finish') { if (S.route.spec?.parking) finishHunt(); else finishRace(e.result); }
-  if (e.type === 'lap') { const tr = S.race.lapTraces.at(-1); if (tr) { const g = { ms: e.ms, trace: compressTrace(tr) }; if (saveGhost(g)) { S.ghostSaved = true; S.ghost = g; } } } // your best lap so far chases you from the next lap
+  if (e.type === 'lap' && !S.simRun) { const tr = S.race.lapTraces.at(-1); if (tr) { const g = { ms: e.ms, trace: compressTrace(tr) }; if (saveGhost(g)) { S.ghostSaved = true; S.ghost = g; } } } // your best lap so far chases you from the next lap
 }
 
 function followCam(lat, lon) {
@@ -982,6 +988,7 @@ function startNav() {
   speak('Stage ready.', true); // also unlocks speech on iOS (needs a tap)
 
   const sim = +$('simSpeed').value;
+  S.simRun = sim > 0; // simulated runs are never recorded (no leaderboard, best time or ghost)
   const go = () => { S.race.start(Date.now()); if (sim > 0) startSim(sim); };
   if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); }
   else if (flying) { speak('Time attack. The clock starts when you cross the line.'); go(); }
@@ -1108,13 +1115,15 @@ $('chipName').onclick = async () => {
 function pbKey() { return 'pb|' + specToHash(S.route.spec, { loop: S.route.loop }) + '|' + (S.route.loop ? settings.laps : 1) + (S.route.loop && settings.start === 'flying' ? '|fly' : ''); } // flying laps are their own records
 function finishRace(res) {
   const R = S.route, name = R.spec?.name || '';
-  const newGhost = !R.loop && res.ghost ? saveGhost(res.ghost) : false;
+  const sim = !!S.simRun;
+  const newGhost = !sim && !R.loop && res.ghost ? saveGhost(res.ghost) : false;
   let pbs = {}; try { pbs = JSON.parse(localStorage.getItem('codriver.pb') || '{}'); } catch {}
-  const key = pbKey(), prev = pbs[key], isPb = !prev || res.ms < prev;
+  const key = pbKey(), prev = pbs[key], isPb = !sim && (!prev || res.ms < prev);
   if (isPb) { pbs[key] = res.ms; try { localStorage.setItem('codriver.pb', JSON.stringify(pbs)); } catch {} }
+  const place = sim ? null : recordRun(res);
   stopNav();
   const unit = settings.units === 'imperial' ? 'miles per hour' : 'kilometres per hour';
-  speak(`Finish! ${sayTime(res.ms)}. Average ${Math.round(kmh(res.avg))} ${unit}.${isPb && prev ? ' New personal best!' : ''}`);
+  speak(`Finish! ${sayTime(res.ms)}. Average ${Math.round(kmh(res.avg))} ${unit}.${isPb && prev ? ' New personal best!' : ''}${sim ? ' Simulation, not recorded.' : ''}`);
 
   $('resName').textContent = name || 'Unnamed stage';
   const p = routeSvgPath(R.loop ? [...R.points, R.points[0]] : R.points, 300, 170);
@@ -1123,7 +1132,9 @@ function finishRace(res) {
     (R.loop ? `<circle cx="${sx}" cy="${sy}" r="7" class="r-sf"/>`
             : `<circle cx="${sx}" cy="${sy}" r="6" class="r-start"/><circle cx="${ex}" cy="${ey}" r="7" class="r-sf"/>`);
   $('resTime').textContent = fmtRaceTime(res.ms);
-  $('resPb').textContent = isPb ? (prev ? `New personal best! (was ${fmtRaceTime(prev)})` : 'First run — personal best set') : `Personal best ${fmtRaceTime(prev)} (+${fmtRaceTime(res.ms - prev)})`;
+  $('resPb').textContent = sim ? '🧪 Simulation — not recorded'
+    : (isPb ? (prev ? `New personal best! (was ${fmtRaceTime(prev)})` : 'First run — personal best set') : `Personal best ${fmtRaceTime(prev)} (+${fmtRaceTime(res.ms - prev)})`)
+      + (place?.rank ? ` · 🏆 P${place.rank} of ${place.of}${R.loop ? ' (by best lap)' : ''}` : '');
   $('resPb').classList.toggle('pb', isPb);
   if (newGhost || S.ghostSaved) $('resPb').textContent += ' · 👻 your best is now the ghost to beat';
   const u = settings.units === 'imperial' ? 'mph' : 'km/h';
@@ -1628,7 +1639,7 @@ $('storeWarn').onclick = () => { $('storeWarn').hidden = true; };
 
 // ---------- backup: everything you've saved, to a file and back ----------
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.settings'];
+const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.board', 'codriver.settings'];
 async function exportBackup() {
   const data = { app: 'codriver', version: 1, exported: new Date().toISOString() };
   for (const k of BACKUP_KEYS) { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch { data[k] = null; } }
@@ -1656,6 +1667,7 @@ async function importBackup(file) {
     'codriver.fixes': mergeById(get('codriver.fixes', []), data['codriver.fixes']),
     'codriver.ghosts': mergeFaster(get('codriver.ghosts', {}), data['codriver.ghosts'], (g) => g.ms),
     'codriver.pb': mergeFaster(get('codriver.pb', {}), data['codriver.pb']),
+    'codriver.board': mergeBoards(get('codriver.board', {}), data['codriver.board']),
   };
   try { for (const [k, v] of Object.entries(write)) localStorage.setItem(k, JSON.stringify(v)); }
   catch { return toast('Couldn’t import — this browser is blocking saved data (Private tab?)', 6000); }
@@ -1943,3 +1955,61 @@ function exitMapFull() {
   if (S.fix) followCam(S.fix.lat, S.fix.lon);
 }
 $('mapBack').onclick = (e) => { e.stopPropagation(); exitMapFull(); };
+
+// ---------- 🏆 leaderboard: best times on each route / lap ----------
+const boardKey = () => 'b|' + specToHash(S.route.spec, { loop: S.route.loop }) + (S.route.loop && settings.start === 'flying' ? '|fly' : '');
+function loadBoards() { try { return JSON.parse(localStorage.getItem('codriver.board') || '{}'); } catch { return {}; } }
+function putBoards(b) { try { localStorage.setItem('codriver.board', JSON.stringify(b)); return true; } catch { toast('Leaderboard not saved — this browser is blocking saved data'); return false; } }
+function recordRun(res) {
+  const R = S.route;
+  const meta = { name: R.spec?.name || '', loop: !!R.loop, fly: !!(R.loop && settings.start === 'flying'), total: R.total,
+    hash: specToHash(R.spec, { loop: R.loop, name: R.spec?.name || '' }) };
+  const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), ms: res.ms, date: Date.now(),
+    avg: res.avg, top: res.top, dist: res.dist, ...(R.loop ? { best: res.best, lapsN: res.laps.length } : {}) };
+  if (R.loop && res.best == null) return null; // a circuit with no full lap: nothing to rank
+  const out = addRun(loadBoards(), boardKey(), meta, entry);
+  return putBoards(out.boards) ? out : null;
+}
+const medal = (i) => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
+const fmtDay = (t) => { const d = new Date(t); return `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(2)} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function openBoard() {
+  const cur = S.route?.spec ? boardKey() : null;
+  const list = boardList(loadBoards()).sort((a, b) => (b.key === cur) - (a.key === cur)); // this route first
+  const u = settings.units === 'imperial' ? 'mph' : 'km/h';
+  $('boardList').innerHTML = list.length ? list.map((b) => {
+    const rows = ranked(b).map((e, i) => `<li data-id="${e.id}"><span class="bd-rank">${medal(i)}</span>
+      <span class="bd-time"><b>${fmtRaceTime(b.loop ? e.best ?? e.ms : e.ms)}</b><small>${b.loop ? `best lap · ${e.lapsN} lap${e.lapsN === 1 ? '' : 's'} in ${fmtRaceTime(e.ms)}` : `avg ${Math.round(kmh(e.avg || 0))} ${u}`}</small></span>
+      <span class="bd-date">${fmtDay(e.date)}</span><button class="bd-del" title="Delete this time">✕</button></li>`).join('');
+    return `<div class="bd${b.key === cur ? ' current' : ''}" data-k="${encodeURIComponent(b.key)}">
+      <div class="bd-head"><div><b>${b.name ? esc(b.name) : 'Unnamed ' + (b.loop ? 'circuit' : 'stage')}</b>
+        <small>${b.loop ? `⟳ ${fmtDist(b.total)} lap${b.fly ? ' · ⏱ time attack' : ''}` : `→ ${fmtDist(b.total)} stage`}${b.key === cur ? ' · this route' : ''}</small></div>
+        <button class="pill ghost bd-open">Drive it</button><button class="pill ghost bd-clear" title="Delete all times for this route">🗑</button></div>
+      <ol class="bd-list">${rows}</ol></div>`;
+  }).join('') : '<p class="fine">No times yet. Finish a route or a lap (not simulated) and your time goes here.</p>';
+  openSheet('boardSheet');
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// delete: tap ✕ (or 🗑) once to arm it, again to delete — no accidental losses
+$('boardList').addEventListener('click', async (e) => {
+  const card = e.target.closest('.bd'); if (!card) return;
+  const key = decodeURIComponent(card.dataset.k);
+  const arm = (btn, label, act) => {
+    if (btn.classList.contains('armed')) return act();
+    btn.classList.add('armed'); const old = btn.textContent; btn.textContent = label;
+    setTimeout(() => { btn.classList.remove('armed'); btn.textContent = old; }, 3000);
+  };
+  const del = e.target.closest('.bd-del');
+  if (del) return arm(del, 'Delete?', () => { putBoards(removeRun(loadBoards(), key, del.closest('li').dataset.id)); openBoard(); toast('Time deleted'); });
+  const clr = e.target.closest('.bd-clear');
+  if (clr) return arm(clr, 'Delete all?', () => { putBoards(removeBoard(loadBoards(), key)); openBoard(); toast('All times for that route deleted'); });
+  if (e.target.closest('.bd-open')) {
+    const b = loadBoards()[key]; if (!b?.hash) return;
+    $('boardSheet').hidden = true;
+    if (S.route?.spec && boardKey() === key) return openSheet('routeSheet');
+    if (b.fly) { settings.start = 'flying'; saveSettings(); }
+    try { await openRouteHash(b.hash, { label: b.name || 'Route' }); } catch (err) { toast('Could not open: ' + err.message); }
+  }
+});
+$('btnBoard').onclick = openBoard;
+$('btnBoard2').onclick = openBoard;
+$('resBoard').onclick = () => { $('resultSheet').hidden = true; openBoard(); };

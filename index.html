@@ -82,6 +82,7 @@
       <button id="btnShare" class="pill ghost">Share link</button>
       <button id="btnNotes" class="pill ghost">Stage notes</button>
       <button id="btnReview" class="pill ghost">🔍 Review notes on map</button>
+      <button id="btnBoard2" class="pill ghost">🏆 Leaderboard</button>
     </div>
     <div class="row"><label class="sim">Simulate
       <select id="simSpeed"><option value="0">off</option><option value="60">60</option><option value="90">90</option><option value="120">120</option></select>
@@ -102,6 +103,7 @@
     <button id="btnDraw" class="pill ghost">Draw route</button>
   </div>
   <div class="row"><button id="btnPlaces" class="pill ghost">📍 My places</button><button id="btnMyRoutes" class="pill ghost">★ My routes</button></div>
+  <div class="row"><button id="btnBoard" class="pill ghost">🏆 Leaderboard</button></div>
   <div class="row"><button id="btnRecord" class="pill ghost">⏺ Record a route — just drive it</button></div>
   <div class="row"><button id="btnDemo" class="pill ghost">Load demo stage</button></div>
   <p class="fine">Pace notes are generated from map geometry and can be wrong. Keep your eyes on the road and drive to the conditions and the law.</p>
@@ -170,6 +172,14 @@
   <div id="resGrid" class="res-grid"></div>
   <ol id="resLaps"></ol>
   <div class="row"><button id="resShare" class="pill go">Share result</button><button id="resAgain" class="pill ghost">Race again</button></div>
+  <div class="row"><button id="resBoard" class="pill ghost">🏆 Leaderboard</button></div>
+</section>
+
+<!-- leaderboard -->
+<section id="boardSheet" class="sheet tall" hidden>
+  <header><h2>🏆 Leaderboard</h2><button class="close" data-close>✕</button></header>
+  <div id="boardList"></div>
+  <p class="fine">Your best times on this phone, fastest first: stages by time, circuits by best lap. Simulated runs are never recorded. Tap ✕ twice to delete a time, or 🗑 twice to clear a route. Included in Export backup.</p>
 </section>
 
 <!-- settings sheet -->
@@ -209,6 +219,10 @@
   <label>Note labels on the map</label>
   <div class="seg" id="setLabels">
     <button data-v="off">Hide (tap a dot)</button><button data-v="on">Show all</button>
+  </div>
+  <label>Distance between calls (“…, 200, right 3”)</label>
+  <div class="seg" id="setDists">
+    <button data-v="off">Don’t say</button><button data-v="on">Say it</button>
   </div>
   <label>Street names at junctions</label>
   <div class="seg" id="setStreets">
