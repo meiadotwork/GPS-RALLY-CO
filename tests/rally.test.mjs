@@ -610,3 +610,15 @@ test('calls: no distance numbers between notes unless switched on', () => {
   assert.equal(chainText(gen.notes, 1, 2, 'metric', { distances: true }), 'Left 4 into right 3, 200');
   assert.equal(chainText(gen.notes, 0, 0), chainText(gen.notes, 0, 0).replace(/, \d+$/, ''));
 });
+
+test('simulator at a constant speed: exactly what you pick, 1 to 300 km/h', () => {
+  for (const kmh of [1, 300]) {
+    const sim = new DriveSim(gen.samples, gen.kappa, kmh / 3.6, { constant: true });
+    for (let i = 0; i < 20; i++) assert.ok(Math.abs(sim.tick(0.5).speed * 3.6 - kmh) < 1e-9);
+  }
+  // 300 km/h: the calls still come, and early enough
+  const sim = new DriveSim(gen.samples, gen.kappa, 300 / 3.6, { constant: true }), sch = new CallScheduler(gen.notes);
+  let calls = 0, late = 0;
+  while (!sim.done) { const f = sim.tick(0.5); const c = sch.update(f.s, f.speed); if (c) { calls++; if (c.distToNote < 0) late++; } }
+  assert.ok(calls > 3 && late === 0, `${calls} calls, ${late} late`);
+});

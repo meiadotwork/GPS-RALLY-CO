@@ -84,9 +84,12 @@
       <button id="btnReview" class="pill ghost">🔍 Review notes on map</button>
       <button id="btnBoard2" class="pill ghost">🏆 Leaderboard</button>
     </div>
-    <div class="row"><label class="sim">Simulate
-      <select id="simSpeed"><option value="0">off</option><option value="60">60</option><option value="90">90</option><option value="120">120</option></select>
-    </label></div>
+    <div class="sim-box">
+      <label class="sim"><input type="checkbox" id="simOn"> Simulate at</label>
+      <input id="simSpeed" type="number" min="1" max="300" step="1" inputmode="numeric" aria-label="Simulation speed in km/h">
+      <span class="sim-unit">km/h</span>
+      <input id="simRange" type="range" min="1" max="300" step="1" aria-label="Simulation speed">
+    </div>
     <div class="row"><button id="btnHunt" class="pill ghost">🅿️ Parking hunt at the destination</button></div>
     <div class="row"><button id="btnStart2" class="pill go" hidden>Start</button></div>
     <div class="row"><button id="btnCancel" class="pill danger" hidden>Cancel route</button></div>

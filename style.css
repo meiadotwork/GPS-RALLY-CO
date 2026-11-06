@@ -445,3 +445,11 @@ body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: round
 body.skin-arcade .bd, body.skin-arcade .bd-del { border-radius: 0; }
 body.skin-arcade .bd-time b { font-family: 'Press Start 2P', monospace; font-size: 14px; }
 body.skin-arcade .bd-head small, body.skin-arcade .bd-time small, body.skin-arcade .bd-date { font-size: 9px; line-height: 1.5; }
+
+/* simulation speed */
+.sim-box { display: grid; grid-template-columns: auto 5.5em auto; align-items: center; gap: 8px 10px; margin-top: 12px; }
+.sim-box .sim { color: var(--ink); font-size: 15px; }
+#simSpeed { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; }
+.sim-unit { color: var(--dim); }
+#simRange { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+body.skin-arcade #simSpeed { border-radius: 0; font-size: 12px; }

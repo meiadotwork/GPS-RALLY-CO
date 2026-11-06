@@ -18,7 +18,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -644,8 +644,8 @@ $('drawRaw').onclick = () => {
 $('btnDemo').onclick = () => {
   const { points, steps, elevation } = buildStage();
   buildRoute({ raw: true, points, steps, elevation, demo: true });
-  $('simSpeed').value = '90';
-  toast('Demo stage loaded — Simulate is on');
+  setSim(true);
+  toast(`Demo stage loaded — Simulate is on (${settings.simKmh} km/h)`);
 };
 
 // ---------- notes list ----------
@@ -987,7 +987,7 @@ function startNav() {
   unlockAudio();
   speak('Stage ready.', true); // also unlocks speech on iOS (needs a tap)
 
-  const sim = +$('simSpeed').value;
+  const sim = simKmh();
   S.simRun = sim > 0; // simulated runs are never recorded (no leaderboard, best time or ghost)
   const go = () => { S.race.start(Date.now()); if (sim > 0) startSim(sim); };
   if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); }
@@ -1006,7 +1006,7 @@ function startNav() {
 
 function startSim(kmh) {
   const target = S.route.loop ? settings.laps : 1;
-  const ds = new DriveSim(S.route.samples, S.route.kappa, kmh / 3.6, { loop: S.route.loop, laps: target ? target + 1 : Infinity });
+  const ds = new DriveSim(S.route.samples, S.route.kappa, kmh / 3.6, { loop: S.route.loop, laps: target ? target + 1 : Infinity, constant: true });
   S.simTimer = setInterval(() => {
     const f = ds.tick(0.5); onFix({ ...f, t: Date.now() });
     if (ds.done && S.simTimer) { clearInterval(S.simTimer); S.simTimer = null; }
@@ -2013,3 +2013,16 @@ $('boardList').addEventListener('click', async (e) => {
 $('btnBoard').onclick = openBoard;
 $('btnBoard2').onclick = openBoard;
 $('resBoard').onclick = () => { $('resultSheet').hidden = true; openBoard(); };
+
+// ---------- simulation speed: any speed from 1 to 300 km/h ----------
+const clampSim = (v) => Math.max(1, Math.min(300, Math.round(+v || 0)));
+function setSim(on, kmh = settings.simKmh) {
+  settings.simKmh = clampSim(kmh); saveSettings();
+  if (on != null) $('simOn').checked = on;
+  $('simSpeed').value = settings.simKmh; $('simRange').value = settings.simKmh;
+}
+const simKmh = () => ($('simOn').checked ? clampSim($('simSpeed').value) : 0); // 0 = real GPS
+$('simRange').oninput = (e) => { setSim(true, e.target.value); };
+$('simSpeed').oninput = (e) => { if (e.target.value !== '') { settings.simKmh = clampSim(e.target.value); $('simRange').value = settings.simKmh; $('simOn').checked = true; saveSettings(); } };
+$('simSpeed').onchange = (e) => setSim(true, e.target.value || settings.simKmh); // snaps 0 → 1, 450 → 300
+setSim(false);

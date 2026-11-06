@@ -314,7 +314,7 @@ To make a circuit, tick **Lap circuit** in the Route sheet, or switch the draw b
 
 ## Try it without driving
 
-Tap Route → Load demo stage → Start. The Simulate option drives the stage at a capped speed. It slows for corners and speaks the calls.
+Tap Route → Load demo stage → Start. **Simulate at … km/h** drives the route at **exactly the speed you choose, anywhere from 1 to 300 km/h**: type it in the box or drag the slider. The speed stays the same the whole way, corners included, so you can hear how early the calls come at that speed. Untick **Simulate** to drive with the real GPS. Your speed is remembered.
 
 ## Dev
 

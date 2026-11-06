@@ -156,10 +156,12 @@ export class CallScheduler {
 // ---------- simulator ----------
 
 export class DriveSim {
-  constructor(samples, kappa, vmax, { loop = false, laps = Infinity } = {}) {
-    this.samples = samples;
+  // constant: drive exactly vmax the whole way (the app's simulator: any speed, 1–300 km/h);
+  // otherwise vmax is a top speed, slowing for corners like a real car
+  constructor(samples, kappa, vmax, { loop = false, laps = Infinity, constant = false } = {}) {
+    this.samples = samples; this.constant = constant; this.vmax = vmax;
     this.loop = loop; this.laps = laps; this.lap = 0;
-    this.v = speedProfile(samples, kappa, vmax, { loop });
+    this.v = constant ? samples.map(() => vmax) : speedProfile(samples, kappa, vmax, { loop });
     this.s = 0; this.i = 0; this.done = false; this.cur = 0;
   }
   tick(dt) {
@@ -172,7 +174,7 @@ export class DriveSim {
     const a = S[this.i], b = S[this.i + 1] || a;
     const t = b.s > a.s ? (this.s - a.s) / (b.s - a.s) : 0;
     const v0 = this.v[this.i], v1 = this.v[this.i + 1] ?? v0;
-    const speed = Math.max(1.5, Math.min(v0 + (v1 - v0) * t, this.cur + 2.5 * dt)); // standing start
+    const speed = this.constant ? this.vmax : Math.max(1.5, Math.min(v0 + (v1 - v0) * t, this.cur + 2.5 * dt)); // standing start
     this.cur = speed;
     this.s = this.loop ? this.s + speed * dt : Math.min(L, this.s + speed * dt);
     if (!this.loop && this.s >= L - 0.5) this.done = true;
