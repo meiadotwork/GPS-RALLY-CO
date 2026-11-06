@@ -263,9 +263,17 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 - 🚦 icons show on the map, and the route summary counts them.
 - The map knows **where** lights are, not whether they're red or green. Some junctions may be missing.
 
+### 🚦 Your own traffic lights
+
+Map data often misses lights, so you can add your own. **They're always used**, whatever the map setting: called ("traffic lights", "at lights, square left"), shown on the map with a purple ring, and the 🔴 timer works at them.
+- **While driving:** tap **🚦＋** (right side) where you are. If you're stopped at the line, **🔴** appears straight away, ready for the timer.
+- **When planning:** long-press the map → **🚦 Add traffic light**, or in Review use **＋ Add at ⊕ → 🚦 Traffic light here**.
+- **Remove:** tap one of your 🚦 on the map → **Remove this light** (tap twice). What the timer learned there is removed too.
+- Saved by location (`codriver.mylights`), included in Export backup. A light within 25 m of an existing one isn't added twice.
+
 ### 🔴 Red light timer
 
-When you **stop at a mapped traffic light** (Traffic lights on, under 5 km/h, within 40 m), a big **🔴 RED** button appears. Tap it when the light turns red.
+When you **stop at a traffic light**, one of yours or a map one with the setting on (under 5 km/h, within 40 m), a big **🔴 RED** button appears. Tap it when the light turns red.
 - **First time at a light, it learns.** It counts **up** while you wait. Tap **🟢 Green** when it changes, or just drive off, and it saves how long that light was red.
 - **Every time after, it counts down** from the learned time, e.g. 56… 55… It shows "~" until it has learned the light from 2 stops.
 - **One double beep at 10 seconds left**, and the timer turns yellow. At zero it says "should turn green any moment" and counts the extra seconds.

@@ -470,3 +470,11 @@ body.skin-arcade #simSpeed { border-radius: 0; font-size: 12px; }
 body.skin-arcade #redBtn, body.skin-arcade #redTimer { border-radius: 0; box-shadow: none; }
 body.skin-arcade #redNum { font-family: 'Press Start 2P', monospace; font-size: clamp(44px, 16vw, 84px); line-height: 1.2; }
 body.skin-arcade #redSub { font-size: 10px; line-height: 1.6; }
+
+#lightAdd { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(216px + var(--safe-b)); z-index: 690;
+  width: 58px; height: 58px; border-radius: 50%; border: 2px solid var(--line); background: var(--panel); color: var(--ink);
+  font-size: 22px; line-height: 1; display: grid; place-content: center; }
+#lightAdd small { font-size: 12px; font-weight: 900; }
+body.map-full #lightAdd { bottom: calc(80px + var(--safe-b)); }
+.my-light { border-radius: 50%; box-shadow: 0 0 0 3px #b67cff; background: #0008; }
+body.skin-arcade #lightAdd { border-radius: 0; border: 4px solid #fff; }

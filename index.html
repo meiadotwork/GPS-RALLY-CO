@@ -32,6 +32,7 @@
 </section>
 
 <button id="mapBack" class="pill go" hidden>↩ Back to driving</button>
+<button id="lightAdd" hidden aria-label="Add a traffic light here">🚦<small>＋</small></button>
 <button id="redBtn" hidden aria-label="Start the red light timer">🔴<small>RED</small></button>
 <div id="redTimer" hidden>
   <div id="redNum">0</div>
@@ -164,6 +165,7 @@
   <p id="addNote" class="fine"></p>
   <div id="addGrades" class="add-grid"></div>
   <div class="row"><button id="addWordsOnly" class="pill ghost">Words only (crest, rocks, bumps…)</button></div>
+  <div class="row"><button id="addLightHere" class="pill ghost">🚦 Traffic light here</button></div>
   <p class="fine">Saved by location, like your fixes — every route through here gets this call.</p>
 </section>
 
@@ -242,11 +244,11 @@
   <div class="seg" id="setStreets">
     <button data-v="on">Say them</button><button data-v="off">Don't say</button>
   </div>
-  <label>Traffic lights</label>
+  <label>Traffic lights from the map</label>
   <div class="seg" id="setLights">
     <button data-v="off">Off</button><button data-v="on">Call them</button>
   </div>
-  <p class="fine">“At lights, square left”, or “traffic lights” when you go straight through, plus 🚦 on the map. Light locations come from OpenStreetMap and may be missing for some junctions. There’s no live red/green information.</p>
+  <p class="fine">“At lights, square left”, or “traffic lights” when you go straight through, plus 🚦 on the map. Map lights come from OpenStreetMap and are often missing. <b>Your own lights are always used:</b> tap 🚦＋ while driving, or long-press the map → 🚦 Add traffic light. Tap one of yours on the map to remove it.</p>
   <label>Speed cameras</label>
   <div class="seg" id="setCams">
     <button data-v="off">Off</button><button data-v="on">Call them</button>
