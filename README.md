@@ -134,6 +134,8 @@ In edit mode **every point can be dragged, including the start (S) and finish (F
 
 ## Checkpoints, then the finish
 
+**Arriving counts.** Once every checkpoint is passed, getting **within about 45 m of the destination** finishes the run (up to 70 m when the GPS reports poor accuracy). That works even if your position never quite reaches the end of the route line, say you park beside it or drive straight past. A reroute near the end updates where the finish is, and just past the destination the app finishes instead of turning you around.
+
 The finish **unlocks only after you've driven through all your checkpoints**, in order. Reaching the destination early, for example on a lap round your block that passes the finish street before the end, doesn't end the run.
 - As you pass each checkpoint you hear a short double beep, and the screen shows **✓ Checkpoint 2 · 2/5**. The driving screen keeps a running **CP 2/5**.
 - If you reach the finish having **missed** a checkpoint (say you took a shortcut past it), you hear "Finish locked. Missed checkpoint 3." Drive through it and come back to the finish, or tap Stop.
@@ -280,6 +282,8 @@ Map data often misses lights, so you can add your own. **They're always used**, 
 - Saved by location (`codriver.mylights`), included in Export backup. A light within 25 m of an existing one isn't added twice.
 
 ### 🔴 Red light timer
+
+**Settings → 🔴 Red light timer: On / Off**, and **🚦＋ button while driving: Show / Hide**. **Settings → 🚦 Add, move or delete my traffic lights** opens the editor with no route needed.
 
 When you **stop at a traffic light**, one of yours or a map one with the setting on (under 5 km/h, within 40 m), a big **🔴 RED** button appears. Tap it when the light turns red.
 - **First time at a light, it learns.** It counts **up** while you wait. Tap **🟢 Green** when it changes, or just drive off, and it saves how long that light was red.

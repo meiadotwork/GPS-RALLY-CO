@@ -19,7 +19,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', crests: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', crests: 'off', redTimer: 'on', lightBtn: 'on', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -329,6 +329,14 @@ function setRoute(r, { fit = true } = {}) {
   // your checkpoints (not the app's hidden pins): the finish only unlocks once you've been through them all
   const user = r.spec?.raw || r.spec?.parking ? [] : (r.spec?.base || r.spec?.via || []), mids = gen.loop ? [] : user.slice(1, -1), cs = along(mids);
   S.route.checkpoints = mids.map((ll, i) => ({ n: i + 1, ll, s: cs[i] }));
+  if (S.nav) {
+    // mid-drive (reroute, or calls changed): keep what you've passed, re-place the rest on the new route
+    const old = S.cps || [];
+    const fresh = S.route.checkpoints.map((c) => { const o = old.find((x) => segLen(x.ll, c.ll) < 5); return { ...c, n: o?.n ?? c.n, passed: !!o?.passed }; });
+    S.cps = [...old.filter((o) => o.passed && !fresh.some((c) => segLen(c.ll, o.ll) < 5)), ...fresh];
+    S.prevS = null;
+    if (S.race && !gen.loop) S.race.total = gen.total; // a reroute changes the length: the finish is the new end
+  }
   drawRoute(fit);
   $('btnGo').disabled = false;
   $('routeActions').hidden = false;
@@ -756,6 +764,11 @@ bindSeg('setScale', 'scale');
 bindSeg('setCams', 'cams');
 bindSeg('setLights', 'lights');
 bindSeg('setCrests', 'crests');
+bindSeg('setRed', 'redTimer');
+$('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') { redStop(false); $('redBtn').hidden = true; } toast(settings.redTimer === 'on' ? '🔴 Red light timer on' : '🔴 Red light timer off'); });
+bindSeg('setLightBtn', 'lightBtn');
+$('setLightBtn').addEventListener('click', () => { if (S.nav) $('lightAdd').hidden = settings.lightBtn === 'off'; });
+$('setEditLights').onclick = () => startLightEdit();
 $('setCrests').addEventListener('click', () => regen(settings.crests === 'on' ? 'Automatic crests & dips: on' : 'Automatic crests & dips: off — add your own with ＋ Note'));
 $('setLights').addEventListener('click', () => regen(settings.lights === 'on' ? 'Traffic lights: on' : 'Traffic lights: off'));
 bindSeg('setStreets', 'streets');
@@ -862,7 +875,8 @@ function onFix(f) {
   if (f.heading != null && !isNaN(f.heading) && S.speed > 3) S.heading = f.heading;
   else if (loc.offset < 30) S.heading = loc.bearing;
 
-  if (S.offCount >= 3 && now - S.lastReroute > 15000 && !S.simTimer) {
+  const nearDest = !S.route.loop && S.route.dest && segLen([f.lat, f.lon], S.route.dest) < 120 && !(S.cps || []).some((c) => !c.passed);
+  if (S.offCount >= 3 && now - S.lastReroute > 15000 && !S.simTimer && !nearDest) { // just past the finish: finish, don't U-turn
     if (S.route.loop) { // circuits: no reroute, just say so and pick up again when back on track
       S.lastReroute = now; speak('Off route.', true); toast('Off circuit — rejoin to continue');
     } else reroute([f.lat, f.lon]);
@@ -899,6 +913,12 @@ function onFix(f) {
   }
   S.prevS = sNow;
   S.lastS = loc.s;
+  // Arriving counts: within ~45 m of the destination (more with poor GPS), near the end of the route or just
+  // past it, with every checkpoint passed — even if the route line itself was never quite reached.
+  if (S.race?.state === 'running' && !S.route.loop && S.route.dest && !S.race.locked && !S.race.waiting) {
+    const reach = Math.min(70, Math.max(45, (f.accuracy || 10) * 1.5));
+    if (segLen([f.lat, f.lon], S.route.dest) <= reach && (sNow >= S.route.total - 250 || S.offCount > 0)) onRaceEvent(S.race.finish(now), now);
+  }
   if (S.race) for (const e of S.race.update(now, sNow, S.speed)) onRaceEvent(e, now);
   if (S.race && S.nav) paintGhost(now, sNow);
   if (!S.nav) return; // the race just finished
@@ -1001,7 +1021,7 @@ function startNav() {
   $('notepanel').hidden = false;
   $('btnGo').textContent = 'Stop'; $('btnGo').classList.add('stop');
   $('btnRoute').textContent = '＋ Note';
-  $('lightAdd').hidden = false;
+  $('lightAdd').hidden = settings.lightBtn === 'off';
   setTimeout(paintCompass); // ▲/N while driving
   $('routeChip').hidden = true;
   map.dragging[S.headingUp ? 'disable' : 'enable']();
@@ -2074,7 +2094,7 @@ function loadRed() { try { return JSON.parse(localStorage.getItem('codriver.redl
 function putRed(l) { try { localStorage.setItem('codriver.redlights', JSON.stringify(l)); } catch {} }
 let RED = null; // { t0, at: {lat, lon, heading}, learned, total, beeped, timer, moving }
 function redOnFix(f) {
-  if (!S.nav || S.simRun) return;
+  if (!S.nav || S.simRun || settings.redTimer === 'off') { $('redBtn').hidden = true; return; }
   const kph = S.speed * 3.6;
   if (RED) { // driving off = green: stop and learn (minus ~1.5 s to get going)
     RED.moving = kph > 10 ? RED.moving + 1 : 0;
