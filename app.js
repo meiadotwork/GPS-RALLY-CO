@@ -399,7 +399,7 @@ function paintSummary() {
   $('chipSave').textContent = saved ? '★' : '☆';
   $('chipSave').classList.toggle('on', saved);
   $('chipMeta').textContent = parts.join(' · ');
-  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review';
+  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review' || S.mode === 'lights';
   paintModes();
 }
 
@@ -617,6 +617,7 @@ map.on('click', (e) => {
   const ll = [e.latlng.lat, e.latlng.lng];
   if (S.mode === 'edit') return editAppend(ll);
   if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
+  if (S.mode === 'lights') { if (addMyLight(ll[0], ll[1], null)) toast('🚦 Added — drag it to fine-tune', 2000); return; }
   if (S.mode === 'pick') { S.mode = 'idle'; routeTo(ll); }
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
@@ -2151,16 +2152,19 @@ function removeMyLight(id) {
 }
 function drawMyLights() {
   S.myLightLayer?.remove();
+  const editing = S.mode === 'lights';
   S.myLightLayer = L.layerGroup(myLights().map((m) => L.marker([m.lat, m.lon], {
-    icon: L.divIcon({ className: 'cam-pin my-light', html: '🚦', iconSize: [28, 28] }), zIndexOffset: 400,
-  }).on('click', (e) => {
+    icon: L.divIcon({ className: 'cam-pin my-light' + (editing ? ' editing' : ''), html: '🚦', iconSize: editing ? [40, 40] : [28, 28] }),
+    zIndexOffset: editing ? 2000 : 400, draggable: editing, autoPan: true,
+  }).on('dragend', (e) => { const p = e.target.getLatLng(); moveMyLight(m.id, p.lat, p.lng); }).on('click', (e) => {
     if (S.nav || S.mode === 'edit' || S.mode === 'draw') return;
     L.DomEvent.stopPropagation(e);
     const el = document.createElement('div'); el.className = 'lp-pop';
     const learned = findLearned(loadRed(), m.lat, m.lon, null);
-    el.innerHTML = `<b style="text-align:center">🚦 Your traffic light</b>${learned ? `<small style="text-align:center">red for ~${Math.round(learned.ms / 1000)} s (${learned.n} stop${learned.n === 1 ? '' : 's'})</small>` : ''}<button class="pill danger" data-a="rm">Remove this light</button>`;
+    el.innerHTML = `<b style="text-align:center">🚦 Your traffic light</b>${learned ? `<small style="text-align:center">red for ~${Math.round(learned.ms / 1000)} s (${learned.n} stop${learned.n === 1 ? '' : 's'})</small>` : ''}${editing ? '' : '<button class="pill ghost" data-a="move">✥ Move / add lights</button>'}<button class="pill danger" data-a="rm">Remove this light</button>`;
     const pop = L.popup({ closeButton: false, className: 'lp-wrap' }).setLatLng([m.lat, m.lon]).setContent(el).openOn(map);
     el.onclick = (ev) => {
+      if (ev.target.closest('[data-a="move"]')) { map.closePopup(pop); return startLightEdit([m.lat, m.lon]); }
       const b = ev.target.closest('[data-a="rm"]'); if (!b) return;
       if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Tap again to remove'; return; }
       map.closePopup(pop); removeMyLight(m.id);
@@ -2180,3 +2184,38 @@ $('lightAdd').onclick = (e) => {
   }
 };
 $('addLightHere').onclick = () => { $('addSheet').hidden = true; S.addPin?.remove(); S.addPin = null; if (addAt && addMyLight(addAt[0], addAt[1], null)) toast('🚦 Traffic light added'); };
+
+// ---------- 🚦 edit your traffic lights on the map, any time ----------
+// Drag a 🚦 to move it · tap the map to add one · tap a 🚦 to remove it. What the timer learned moves with it.
+function moveMyLight(id, lat, lon) {
+  const list = myLights(), l = list.find((m) => m.id === id); if (!l) return;
+  const dLat = lat - l.lat, dLon = lon - l.lon;
+  putRed(loadRed().map((r) => (segLen([r.lat, r.lon], [l.lat, l.lon]) <= 45 ? { ...r, lat: r.lat + dLat, lon: r.lon + dLon } : r)));
+  l.lat = lat; l.lon = lon; putMyLights(list);
+  drawMyLights(); if (S.route) regen();
+  toast('🚦 Moved', 1500);
+}
+function startLightEdit(focus) {
+  if (S.nav) return toast('Stop driving first — while driving, use 🚦＋');
+  if (S.mode === 'edit') endEdit(true);
+  if (S.mode === 'review') endReview();
+  S.mode = 'lights'; document.body.classList.add('lightsedit');
+  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
+  map.closePopup();
+  $('bar').hidden = true; $('routeChip').hidden = true; $('lightBar').hidden = false;
+  setRotation(0); map.dragging.enable();
+  drawMyLights();
+  const n = myLights().length;
+  if (focus) map.setView(focus, Math.max(map.getZoom(), 17));
+  else if (n) map.fitBounds(L.latLngBounds(myLights().map((m) => [m.lat, m.lon])).pad(0.3), { maxZoom: 17 });
+  toast(n ? 'Drag a 🚦 to move it · tap the map to add one · tap a 🚦 to remove it' : 'Tap the map where a traffic light is to add it', 5000);
+}
+function endLightEdit() {
+  S.mode = 'idle'; document.body.classList.remove('lightsedit'); $('lightBar').hidden = true; $('bar').hidden = false;
+  drawMyLights(); if (S.route) paintSummary();
+  const n = myLights().length; toast(`🚦 ${n} traffic light${n === 1 ? '' : 's'} saved`, 2000);
+}
+$('lightDone').onclick = endLightEdit;
+$('lightHere').onclick = async () => { const here = await currentPos(); if (addMyLight(here[0], here[1], null)) { map.setView(here, Math.max(map.getZoom(), 17)); toast('🚦 Added at your location — drag it to fine-tune', 2500); } };
+$('btnLights').onclick = () => startLightEdit();
+$('btnLights2').onclick = () => startLightEdit();

@@ -478,3 +478,14 @@ body.skin-arcade #redSub { font-size: 10px; line-height: 1.6; }
 body.map-full #lightAdd { bottom: calc(80px + var(--safe-b)); }
 .my-light { border-radius: 50%; box-shadow: 0 0 0 3px #b67cff; background: #0008; }
 body.skin-arcade #lightAdd { border-radius: 0; border: 4px solid #fff; }
+
+#lightBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 18px; padding: 10px; }
+.lb-txt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.lb-txt small { color: var(--dim); }
+.my-light.editing { font-size: 26px; line-height: 40px; box-shadow: 0 0 0 4px #b67cff, 0 0 0 7px #0008; cursor: grab; }
+body.skin-arcade #lightBar { border-radius: 0; border: 4px solid #fff; }
+body.skin-arcade .lb-txt small { font-size: 9px; line-height: 1.6; }
+body.lightsedit #toast { bottom: calc(150px + var(--safe-b)); }
+body.skin-arcade .my-light { border: 3px solid #b67cff; border-radius: 0; }
+body.skin-arcade .my-light.editing { border-width: 4px; }

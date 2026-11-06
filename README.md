@@ -269,6 +269,13 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 Map data often misses lights, so you can add your own. **They're always used**, whatever the map setting: called ("traffic lights", "at lights, square left"), shown on the map with a purple ring, and the 🔴 timer works at them.
 - **While driving:** tap **🚦＋** (right side) where you are. If you're stopped at the line, **🔴** appears straight away, ready for the timer.
 - **When planning:** long-press the map → **🚦 Add traffic light**, or in Review use **＋ Add at ⊕ → 🚦 Traffic light here**.
+- **Edit any time:** **Route → 🚦 Traffic lights**, the route page's **🚦 Edit traffic lights**, or tap one of your lights → **✥ Move / add lights**. In the editor:
+  - **tap the map** to add a light
+  - **drag** a 🚦 to move it
+  - **📍 Add where I am** adds one at your position
+  - tap a 🚦 to remove it
+
+  What the timer learned at a light moves with it. **Done** saves.
 - **Remove:** tap one of your 🚦 on the map → **Remove this light** (tap twice). What the timer learned there is removed too.
 - Saved by location (`codriver.mylights`), included in Export backup. A light within 25 m of an existing one isn't added twice.
 
