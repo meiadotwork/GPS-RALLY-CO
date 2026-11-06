@@ -18,7 +18,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -311,11 +311,12 @@ function setRoute(r, { fit = true } = {}) {
   if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
     steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike',
-    elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
+    elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined, lights: settings.lights === 'on' ? r.lights : undefined,
   });
   S.route = { ...r, ...gen };
   if (!r.elevation && !r.elevTried) { S.route.elevTried = true; addElevation(S.route); }
   if (settings.cams === 'on' && !r.cameras && !r.camTried) { S.route.camTried = true; addCameras(S.route); }
+  if (settings.lights === 'on' && !r.lights && !r.lightsTried) { S.route.lightsTried = true; addLights(S.route); }
   S.tracker = new RouteTracker(gen.samples, gen.loop);
   S.sched = newScheduler();
   // remember where each waypoint sits along the route, for rerouting
@@ -383,6 +384,8 @@ function paintSummary() {
     : [`~${fmtDur(routeSeconds())}`, `${R.notes.length} note${R.notes.length === 1 ? '' : 's'}`];
   paintLaps();
   if (cams) parts.push(`${cams} 📷`);
+  const lights = R.notes.filter((n) => n.lights).length;
+  if (lights) parts.push(`${lights} 🚦`);
   $('routeInfo').textContent = `${R.loop ? 'Circuit · ' : ''}${dist} · ${parts.join(' · ')} (${corners} corners)`;
   const name = R.spec?.name || '';
   $('chipName').textContent = name || '✎ Name this route';
@@ -408,6 +411,24 @@ async function shareRoute() {
   catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); toast('Link copied — paste it anywhere'); }
   catch { prompt('Copy this link:', url); }
+}
+
+// Traffic lights from OpenStreetMap (highway=traffic_signals), only when switched on.
+async function addLights(route) {
+  try {
+    let s = 90, w = 180, n = -90, e = -180;
+    for (const p of route.samples) { s = Math.min(s, p.lat); n = Math.max(n, p.lat); w = Math.min(w, p.lon); e = Math.max(e, p.lon); }
+    const pad = 0.002, q = `[out:json][timeout:25];node["highway"="traffic_signals"](${s - pad},${w - pad},${n + pad},${e + pad});out skel;`;
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
+    const res = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+    clearTimeout(tm);
+    const j = await res.json();
+    if (S.route?.samples !== route.samples) return;
+    S.route.lights = j.elements.map((el) => ({ lat: el.lat, lon: el.lon }));
+    regen();
+    const k = S.route.notes.filter((x) => x.lights).length;
+    toast(k ? `${k} traffic light${k > 1 ? 's' : ''} on this route` : 'No traffic lights mapped on this route');
+  } catch { toast('Traffic lights: could not load (offline?)'); }
 }
 
 // Speed cameras from OpenStreetMap (highway=speed_camera), only when switched on.
@@ -523,6 +544,7 @@ function drawRoute(fit) {
   })).addTo(map);
   S.notes_cams = S.route.notes.flatMap((n) => n.cams || []);
   S.noteLayer.addLayer(L.layerGroup(S.notes_cams.map((c) => L.marker(c, { icon: L.divIcon({ className: 'cam-pin', html: '📷', iconSize: [24, 24] }), interactive: false }))));
+  S.noteLayer.addLayer(L.layerGroup(S.route.notes.flatMap((n) => n.lights || []).map((c) => L.marker(c, { icon: L.divIcon({ className: 'cam-pin', html: '🚦', iconSize: [24, 24] }), interactive: false }))));
   if (fit) fitVisible(S.routeLayer.getBounds());
 }
 
@@ -726,6 +748,8 @@ bindSeg('setFlats', 'flats');
 $('setFlats').addEventListener('click', () => regen(settings.flats === 'off' ? 'Gentle bends: not called' : 'Gentle bends: flat / kink called'));
 bindSeg('setScale', 'scale');
 bindSeg('setCams', 'cams');
+bindSeg('setLights', 'lights');
+$('setLights').addEventListener('click', () => regen(settings.lights === 'on' ? 'Traffic lights: on' : 'Traffic lights: off'));
 bindSeg('setStreets', 'streets');
 bindSeg('setLabels', 'labels');
 bindSeg('setDists', 'dists');

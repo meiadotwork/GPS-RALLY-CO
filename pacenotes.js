@@ -621,12 +621,26 @@ function decorate(notes, samples, kappa, opt) {
     else if (!at.host) standalone('camera', words.join(', '), at, { cams: [[c.lat, c.lon]] });
   }
 
+  // traffic lights (OpenStreetMap highway=traffic_signals), optional. A junction is often mapped with a
+  // light on each approach: one call per junction. At a turn it becomes "at lights, square left".
+  const lightAt = [];
+  for (const t of opt.lights || []) {
+    const at = pin(t.lat, t.lon, 25); if (!at) continue;
+    if (lightAt.some((s) => Math.abs(s - at.s) < 60)) continue;
+    lightAt.push(at.s);
+    const junc = notes.find((n) => n.kind === 'junction' && at.s >= n.sStart - 25 && at.s <= n.sEnd + 25); // a turn here wins over the bend
+    const h = junc || at.host, ll = [[samples[at.i].lat, samples[at.i].lon]];
+    if (h && h.kind === 'junction' && /^(at junction|T junction)/.test(h.text || '')) { h.text = h.text.replace(/^(at junction|T junction)/, 'at lights'); h.lights = ll; }
+    else if (h && !h.lights && h.kind !== 'finish') { h.extra = [...(h.extra || []), 'at lights']; h.lights = ll; }
+    else if (!h) standalone('lights', 'traffic lights', at, { lights: ll });
+  }
+
   // calls you removed that aren't corners (crest, dip, camera, tunnel): drop them too
   for (const fx of opt.fixes || []) {
     if (!fx.none) continue;
     for (let i = notes.length - 1; i >= 0; i--) {
       const n = notes[i];
-      if (['vertical', 'camera', 'feature'].includes(n.kind) && segLen([fx.lat, fx.lon], [n.lat, n.lon]) < 25) notes.splice(i, 1);
+      if (['vertical', 'camera', 'feature', 'lights'].includes(n.kind) && segLen([fx.lat, fx.lon], [n.lat, n.lon]) < 25) notes.splice(i, 1);
     }
   }
   notes.sort((a, b) => a.sStart - b.sStart);

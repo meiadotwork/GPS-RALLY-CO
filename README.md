@@ -255,6 +255,14 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 - Keeps the 25 best per route. Included in **Export backup**, and imports merge without duplicates.
 - **Simulated runs are never recorded**: no leaderboard entry, personal best or ghost. The results card says "🧪 Simulation — not recorded".
 
+## 🚦 Traffic lights
+
+**Settings → Traffic lights → Call them** (off by default). Traffic light locations come from OpenStreetMap (`highway=traffic_signals`) and are downloaded for the route only when switched on.
+- At a turn with lights: "**at lights, square left**". Going straight through: "**traffic lights**". On a bend: "right 3, at lights".
+- A junction mapped with a light on each approach gets **one** call, not three.
+- 🚦 icons show on the map, and the route summary counts them.
+- The map knows **where** lights are, not whether they're red or green. Some junctions may be missing.
+
 ## Distances in the calls
 
 By default the calls **don't say the distance to the next call** ("left 4, 200, right 3" becomes "left 4, right 3"). The short links "into", "and" and "then" are still said, because they tell you corners come close together. **Settings → Distance between calls → Say it** brings the numbers back.

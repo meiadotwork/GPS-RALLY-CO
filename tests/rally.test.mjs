@@ -622,3 +622,17 @@ test('simulator at a constant speed: exactly what you pick, 1 to 300 km/h', () =
   while (!sim.done) { const f = sim.tick(0.5); const c = sch.update(f.s, f.speed); if (c) { calls++; if (c.distToNote < 0) late++; } }
   assert.ok(calls > 3 && late === 0, `${calls} calls, ${late} late`);
 });
+
+test('traffic lights: "at lights" on the turn, "traffic lights" going straight through, one call per junction', () => {
+  const c0 = [40.82, -73.906], P = (e, n) => offsetPoint(offsetPoint(c0, 90, e), 0, n);
+  const corner = P(400, 0);
+  const pts = [P(0, 0), P(200, 0), corner, P(400, 200), P(400, 400)];
+  const steps = [{ maneuver: { type: 'turn', modifier: 'left', location: [corner[1], corner[0]], bearing_before: 90, bearing_after: 0 } }];
+  const lights = [P(200, 3), corner, P(390, 4), P(404, -6)].map(([lat, lon]) => ({ lat, lon })); // a light mid-street, and three mapped at the same junction
+  const off = generatePaceNotes(pts, { steps }), on = generatePaceNotes(pts, { steps, lights });
+  assert.ok(!off.notes.some((n) => n.lights));
+  const turn = on.notes.find((n) => n.kind === 'junction');
+  assert.match(turn.label, /^at lights, square left/);
+  assert.equal(on.notes.filter((n) => n.label === 'traffic lights').length, 1);
+  assert.equal(on.notes.filter((n) => n.lights).length, 2);                // 4 mapped lights → 2 calls
+});
