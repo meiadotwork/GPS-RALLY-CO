@@ -32,6 +32,17 @@
 </section>
 
 <button id="mapBack" class="pill go" hidden>↩ Back to driving</button>
+<button id="redBtn" hidden aria-label="Start the red light timer">🔴<small>RED</small></button>
+<div id="redTimer" hidden>
+  <div id="redNum">0</div>
+  <div id="redSub"></div>
+  <div class="red-actions">
+    <button id="redMinus" class="pill ghost">−5</button>
+    <button id="redGreen" class="pill go">🟢 Green</button>
+    <button id="redPlus" class="pill ghost">+5</button>
+    <button id="redCancel" class="pill ghost" title="Close without learning">✕</button>
+  </div>
+</div>
 <div id="toast" hidden></div>
 <div id="storeWarn" hidden>⚠ This browser isn’t keeping saved data (Private tab or “Block All Cookies”). Places and routes won’t be kept — open the app in a normal tab, or use Settings → Export backup. <b>✕</b></div>
 

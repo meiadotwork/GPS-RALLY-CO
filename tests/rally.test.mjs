@@ -636,3 +636,26 @@ test('traffic lights: "at lights" on the turn, "traffic lights" going straight t
   assert.equal(on.notes.filter((n) => n.label === 'traffic lights').length, 1);
   assert.equal(on.notes.filter((n) => n.lights).length, 2);                // 4 mapped lights → 2 calls
 });
+
+import { nearLight, findLearned, learn, adjust } from '../redlight.js';
+test('red light timer: learns each light by place and direction, ignores mis-taps, nudges', () => {
+  const c0 = [40.82, -73.906], P = (e, n) => offsetPoint(offsetPoint(c0, 90, e), 0, n);
+  const mapped = [{ lat: P(0, 0)[0], lon: P(0, 0)[1] }, { lat: P(500, 0)[0], lon: P(500, 0)[1] }];
+  const [la, lo] = P(0, -25);
+  assert.ok(nearLight(mapped, la, lo));                      // stopped 25 m before it
+  assert.equal(nearLight(mapped, ...P(0, -80)), null);       // too far
+  let L = [];
+  assert.equal(findLearned(L, la, lo, 0), null);             // first time: nothing learned → count up
+  L = learn(L, { lat: la, lon: lo, heading: 0 }, 56000);
+  assert.equal(findLearned(L, la, lo, 0).ms, 56000);
+  L = learn(L, { lat: la, lon: lo, heading: 5 }, 60000);     // same light, a second stop → averaged
+  assert.equal(L.length, 1); assert.equal(L[0].ms, 58000); assert.equal(L[0].n, 2);
+  assert.equal(findLearned(L, la, lo, 180), null);           // same junction, other direction: its own light
+  L = learn(L, { lat: la, lon: lo, heading: 180 }, 30000); assert.equal(L.length, 2);
+  assert.equal(learn(L, { lat: la, lon: lo, heading: 0 }, 2000), L);   // a 2 s mis-tap is ignored
+  assert.equal(learn(L, { lat: la, lon: lo, heading: 0 }, 400000), L); // 6+ minutes: not a red phase
+  L = adjust(L, L[0].id, 5000); assert.equal(L[0].ms, 63000);
+  // adapts: after many 40 s stops it settles near 40 s
+  for (let i = 0; i < 20; i++) L = learn(L, { lat: la, lon: lo, heading: 0 }, 40000);
+  assert.ok(Math.abs(findLearned(L, la, lo, 0).ms - 40000) < 1500);
+});

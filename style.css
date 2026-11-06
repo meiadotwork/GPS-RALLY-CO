@@ -453,3 +453,20 @@ body.skin-arcade .bd-head small, body.skin-arcade .bd-time small, body.skin-arca
 .sim-unit { color: var(--dim); }
 #simRange { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 body.skin-arcade #simSpeed { border-radius: 0; font-size: 12px; }
+
+/* red light timer */
+#redBtn { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(120px + var(--safe-b)); z-index: 700;
+  width: 84px; height: 84px; border-radius: 50%; border: 4px solid #fff; background: #d0021b; color: #fff; font-size: 30px; line-height: 1;
+  display: grid; place-content: center; box-shadow: 0 4px 14px #000a; }
+#redBtn small { font: 900 12px/1 system-ui, sans-serif; letter-spacing: 1px; margin-top: 2px; }
+#redTimer { position: fixed; left: 8px; right: 8px; bottom: calc(110px + var(--safe-b)); z-index: 700; text-align: center;
+  background: #1a0003; border: 3px solid #d0021b; border-radius: 18px; padding: 10px 12px 12px; }
+#redTimer.last { border-color: #ffcc00; }
+#redNum { font: 900 clamp(64px, 22vw, 120px)/1 ui-monospace, "SF Mono", Menlo, monospace; color: #ff3344; font-variant-numeric: tabular-nums; }
+#redTimer.last #redNum { color: #ffcc00; }
+#redSub { color: #ffb3b9; font-size: 14px; margin: 4px 0 10px; }
+.red-actions { display: grid; grid-template-columns: 1fr 2fr 1fr auto; gap: 6px; }
+.red-actions .pill { min-height: 48px; }
+body.skin-arcade #redBtn, body.skin-arcade #redTimer { border-radius: 0; box-shadow: none; }
+body.skin-arcade #redNum { font-family: 'Press Start 2P', monospace; font-size: clamp(44px, 16vw, 84px); line-height: 1.2; }
+body.skin-arcade #redSub { font-size: 10px; line-height: 1.6; }

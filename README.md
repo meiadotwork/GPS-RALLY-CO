@@ -263,6 +263,16 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 - 🚦 icons show on the map, and the route summary counts them.
 - The map knows **where** lights are, not whether they're red or green. Some junctions may be missing.
 
+### 🔴 Red light timer
+
+When you **stop at a mapped traffic light** (Traffic lights on, under 5 km/h, within 40 m), a big **🔴 RED** button appears. Tap it when the light turns red.
+- **First time at a light, it learns.** It counts **up** while you wait. Tap **🟢 Green** when it changes, or just drive off, and it saves how long that light was red.
+- **Every time after, it counts down** from the learned time, e.g. 56… 55… It shows "~" until it has learned the light from 2 stops.
+- **One double beep at 10 seconds left**, and the timer turns yellow. At zero it says "should turn green any moment" and counts the extra seconds.
+- It keeps learning: each stop updates that light's average (following roughly the last 8 stops). The same junction from another direction is learned separately.
+- **−5 / +5** nudge the time. **✕** closes without learning. Stops shorter than 5 s or longer than 3 minutes are ignored.
+- It never says go: it's an estimate, and the light decides. Not active in simulation. Learned lights (`redlight.js`, `codriver.redlights`) are included in Export backup.
+
 ## Distances in the calls
 
 By default the calls **don't say the distance to the next call** ("left 4, 200, right 3" becomes "left 4, right 3"). The short links "into", "and" and "then" are still said, because they tell you corners come close together. **Settings → Distance between calls → Say it** brings the numbers back.

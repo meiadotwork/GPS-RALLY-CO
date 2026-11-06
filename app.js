@@ -6,6 +6,7 @@ import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace
 import { overpassQuery, buildGraph, planHunt } from './parking.js';
 import { finishRecording } from './record.js';
 import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js';
+import { nearLight, findLearned, learn, adjust as adjustRed } from './redlight.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
@@ -838,11 +839,13 @@ function onFix(f) {
   // speed: device value if present, otherwise from successive fixes
   let v = f.speed;
   if ((v == null || isNaN(v)) && S.prevFix) {
-    const dt = (ft - S.prevFix.t) / 1000;
+    // GPS time between fixes, unless it disagrees with the phone's clock (some devices send odd timestamps)
+    const dG = ft - S.prevFix.t, dN = now - S.prevFix.now;
+    const dt = (dG > 0 && Math.abs(dG - dN) < Math.max(300, dN * 0.3) ? dG : dN) / 1000;
     v = dt > 0 ? segLen([S.prevFix.lat, S.prevFix.lon], [f.lat, f.lon]) / dt : 0;
   }
   S.speed = S.speed * 0.4 + (v || 0) * 0.6;
-  S.prevFix = { lat: f.lat, lon: f.lon, t: ft };
+  S.prevFix = { lat: f.lat, lon: f.lon, t: ft, now };
   S.fix = f;
 
   const loc = S.tracker.locate(f.lat, f.lon);
@@ -922,6 +925,7 @@ function onFix(f) {
   }
   drawMe(f.lat, f.lon, S.heading);
   if (S.follow) followCam(f.lat, f.lon);
+  redOnFix(f);
 }
 
 const fmtTime = (ms) => { const t = ms / 1000, m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(1).padStart(4, '0')}`; };
@@ -1062,6 +1066,7 @@ function countdown(go) {
 function stopNav() {
   S.nav = false;
   document.body.classList.remove('np-full', 'map-full'); $('mapBack').hidden = true;
+  redStop(false); $('redBtn').hidden = true;
   S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
   clearInterval(S.clockTimer); S.clockTimer = null;
@@ -1663,7 +1668,7 @@ $('storeWarn').onclick = () => { $('storeWarn').hidden = true; };
 
 // ---------- backup: everything you've saved, to a file and back ----------
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.board', 'codriver.settings'];
+const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.board', 'codriver.redlights', 'codriver.settings'];
 async function exportBackup() {
   const data = { app: 'codriver', version: 1, exported: new Date().toISOString() };
   for (const k of BACKUP_KEYS) { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch { data[k] = null; } }
@@ -1692,6 +1697,7 @@ async function importBackup(file) {
     'codriver.ghosts': mergeFaster(get('codriver.ghosts', {}), data['codriver.ghosts'], (g) => g.ms),
     'codriver.pb': mergeFaster(get('codriver.pb', {}), data['codriver.pb']),
     'codriver.board': mergeBoards(get('codriver.board', {}), data['codriver.board']),
+    'codriver.redlights': mergeById(get('codriver.redlights', []), data['codriver.redlights']),
   };
   try { for (const [k, v] of Object.entries(write)) localStorage.setItem(k, JSON.stringify(v)); }
   catch { return toast('Couldn’t import — this browser is blocking saved data (Private tab?)', 6000); }
@@ -2050,3 +2056,66 @@ $('simRange').oninput = (e) => { setSim(true, e.target.value); };
 $('simSpeed').oninput = (e) => { if (e.target.value !== '') { settings.simKmh = clampSim(e.target.value); $('simRange').value = settings.simKmh; $('simOn').checked = true; saveSettings(); } };
 $('simSpeed').onchange = (e) => setSim(true, e.target.value || settings.simKmh); // snaps 0 → 1, 450 → 300
 setSim(false);
+
+// ---------- 🔴 red light timer: tap when it turns red; it learns each light ----------
+// The 🔴 button shows when you've stopped at a mapped traffic light (Settings → Traffic lights on).
+// First time at a light: counts UP while you wait and saves how long it was red. After that: counts DOWN.
+// Ends when you tap 🟢 or drive off; either way the wait is learned. One beep 10 s before the end.
+function loadRed() { try { return JSON.parse(localStorage.getItem('codriver.redlights') || '[]'); } catch { return []; } }
+function putRed(l) { try { localStorage.setItem('codriver.redlights', JSON.stringify(l)); } catch {} }
+let RED = null; // { t0, at: {lat, lon, heading}, learned, total, beeped, timer, moving }
+function redOnFix(f) {
+  if (!S.nav || S.simRun) return;
+  const kph = S.speed * 3.6;
+  if (RED) { // driving off = green: stop and learn (minus ~1.5 s to get going)
+    RED.moving = kph > 10 ? RED.moving + 1 : 0;
+    if (RED.moving >= 2) redStop(true, 1500);
+    return;
+  }
+  const stopped = kph < 5, light = stopped && nearLight(S.route?.lights, f.lat, f.lon);
+  $('redBtn').hidden = !light;
+  if (light) S.redAt = { lat: f.lat, lon: f.lon, heading: S.heading ?? null };
+}
+function redStart() {
+  if (!S.redAt) return;
+  const learned = findLearned(loadRed(), S.redAt.lat, S.redAt.lon, S.redAt.heading);
+  RED = { t0: Date.now(), at: S.redAt, learned, total: learned?.ms || 0, beeped: false, moving: 0 };
+  $('redBtn').hidden = true; $('redTimer').hidden = false;
+  unlockAudio();
+  RED.timer = setInterval(paintRed, 200); paintRed();
+}
+function paintRed() {
+  if (!RED) return;
+  const el = Date.now() - RED.t0;
+  if (!RED.learned) { // learning: count up
+    $('redNum').textContent = Math.floor(el / 1000);
+    $('redSub').textContent = 'learning this light · tap 🟢 when it turns green';
+    return;
+  }
+  const left = RED.total - el, s = Math.ceil(left / 1000);
+  if (!RED.beeped && left <= 10000) { RED.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
+  $('redNum').textContent = left > 0 ? (RED.learned.n < 2 ? '~' : '') + s : 'soon';
+  $('redSub').textContent = left > 0 ? `learned from ${RED.learned.n} stop${RED.learned.n === 1 ? '' : 's'} · it’s an estimate — the light decides` : `should turn green any moment · +${Math.floor(-left / 1000)} s`;
+  $('redTimer').classList.toggle('last', left <= 10000);
+}
+function redStop(learnIt, minus = 0) {
+  if (!RED) return;
+  clearInterval(RED.timer);
+  const ms = Date.now() - RED.t0 - minus, before = loadRed(), after = learnIt ? learn(before, RED.at, ms) : before;
+  if (after !== before) {
+    putRed(after);
+    const l = findLearned(after, RED.at.lat, RED.at.lon, RED.at.heading);
+    toast(RED.learned ? `🔴 Red for ${Math.round(ms / 1000)} s · this light now ~${Math.round(l.ms / 1000)} s` : `🔴 Learned: this light is red for ~${Math.round(ms / 1000)} s`, 3500);
+  }
+  RED = null; $('redTimer').hidden = true; $('redTimer').classList.remove('last');
+}
+function redNudge(d) {
+  if (!RED) return;
+  if (RED.learned) { putRed(adjustRed(loadRed(), RED.learned.id, d)); RED.learned = findLearned(loadRed(), RED.at.lat, RED.at.lon, RED.at.heading); }
+  RED.total = Math.max(1000, RED.total + d); RED.beeped = RED.total - (Date.now() - RED.t0) <= 10000; paintRed();
+}
+$('redBtn').onclick = (e) => { e.stopPropagation(); redStart(); };
+$('redGreen').onclick = (e) => { e.stopPropagation(); redStop(true); };
+$('redMinus').onclick = (e) => { e.stopPropagation(); redNudge(-5000); };
+$('redPlus').onclick = (e) => { e.stopPropagation(); redNudge(5000); };
+$('redCancel').onclick = (e) => { e.stopPropagation(); redStop(false); };
