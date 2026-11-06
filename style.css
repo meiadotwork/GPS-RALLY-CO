@@ -476,3 +476,6 @@ body.skin-arcade #timerBtn b { font-family: 'Press Start 2P', monospace; font-si
 #setRedSecs { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
 body.skin-arcade #setRedSecs { border-radius: 0; }
 #redNum { margin-bottom: 10px; }
+/* the ⏱ button never covers the review / recording bars */
+#timerBtn { z-index: 645; }
+body.reviewing #timerBtn { display: none; }
