@@ -19,7 +19,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', crests: 'off', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -312,10 +312,10 @@ function setRoute(r, { fit = true } = {}) {
   if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
     steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike',
-    elevation: r.elevation, recce, fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined, lights: allLights(r),
+    elevation: settings.crests === 'on' ? r.elevation : undefined, recce, // crests & dips from elevation data: off unless asked for fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined, lights: allLights(r),
   });
   S.route = { ...r, ...gen };
-  if (!r.elevation && !r.elevTried) { S.route.elevTried = true; addElevation(S.route); }
+  if (settings.crests === 'on' && !r.elevation && !r.elevTried) { S.route.elevTried = true; addElevation(S.route); }
   if (settings.cams === 'on' && !r.cameras && !r.camTried) { S.route.camTried = true; addCameras(S.route); }
   if (settings.lights === 'on' && !r.lights && !r.lightsTried) { S.route.lightsTried = true; addLights(S.route); }
   S.tracker = new RouteTracker(gen.samples, gen.loop);
@@ -754,6 +754,8 @@ $('setFlats').addEventListener('click', () => regen(settings.flats === 'off' ? '
 bindSeg('setScale', 'scale');
 bindSeg('setCams', 'cams');
 bindSeg('setLights', 'lights');
+bindSeg('setCrests', 'crests');
+$('setCrests').addEventListener('click', () => regen(settings.crests === 'on' ? 'Automatic crests & dips: on' : 'Automatic crests & dips: off — add your own with ＋ Note'));
 $('setLights').addEventListener('click', () => regen(settings.lights === 'on' ? 'Traffic lights: on' : 'Traffic lights: off'));
 bindSeg('setStreets', 'streets');
 bindSeg('setLabels', 'labels');

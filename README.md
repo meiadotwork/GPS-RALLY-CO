@@ -45,7 +45,8 @@ A navigation app for the phone browser that gives every instruction as a rally c
 |---|---|
 | Route geometry | left / right, 1–6, hairpin, flat, kink, square, *tightens 3*, *opens 5*, long, very long, short, late (apex), double apex, chicane left right, don't cut, brake / hard brake, caution / double caution (tightens into a 2 / 1 / hairpin) |
 | Gaps | into (< 20 m), and (< 45 m), then (< 75 m), 100 / 150 / 200 … |
-| Elevation (Open-Meteo, ~90 m terrain model) | crest, small crest, big crest, *over crest*, dip, and caution / double caution on a tight corner within 100 m after a crest (blind) |
+| Elevation (Open-Meteo, ~90 m terrain model). **Off by default** (Settings → Crests & dips), because it's too rough to match real crests | crest, small crest, big crest, *over crest*, dip, and caution / double caution on a tight corner within 100 m after a crest (blind) |
+| **You** (＋ Note while driving, or Review → Add → Words only) | any road condition: crest, jump, dip, compression, bumps, gravel, narrows, don't cut… This is the recommended way to get crests and road conditions. |
 | OSRM | at junction …, T junction, roundabout + exit, fork / merge / slip road, tunnel |
 | **Recce** (you add them) | everything a map can't know: rocks, ditch, bank, wall, trees, drop, exposure, gravel, mud, ice, water, ford, ruts, bumps, jump, compression, narrows, widens, camber, off camber, bridge, gate, keep left / middle / right, cut, cut late, care, maybe, danger, inside / outside … |
 
