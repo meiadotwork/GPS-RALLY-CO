@@ -6,7 +6,6 @@ import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace
 import { overpassQuery, buildGraph, planHunt } from './parking.js';
 import { finishRecording } from './record.js';
 import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js';
-import { nearLight, findLearned, learn, adjust as adjustRed } from './redlight.js';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,7 +18,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', lights: 'off', crests: 'off', redTimer: 'on', lightBtn: 'on', streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
@@ -312,12 +311,11 @@ function setRoute(r, { fit = true } = {}) {
   if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
     steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike',
-    elevation: settings.crests === 'on' ? r.elevation : undefined, recce, // crests & dips from elevation data: off unless asked for fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined, lights: allLights(r),
+    elevation: settings.crests === 'on' ? r.elevation : undefined, recce, // crests & dips from elevation data: off unless asked for fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
   });
   S.route = { ...r, ...gen };
   if (settings.crests === 'on' && !r.elevation && !r.elevTried) { S.route.elevTried = true; addElevation(S.route); }
   if (settings.cams === 'on' && !r.cameras && !r.camTried) { S.route.camTried = true; addCameras(S.route); }
-  if (settings.lights === 'on' && !r.lights && !r.lightsTried) { S.route.lightsTried = true; addLights(S.route); }
   S.tracker = new RouteTracker(gen.samples, gen.loop);
   S.sched = newScheduler();
   // remember where each waypoint sits along the route, for rerouting
@@ -395,8 +393,6 @@ function paintSummary() {
     : [`~${fmtDur(routeSeconds())}`, `${R.notes.length} note${R.notes.length === 1 ? '' : 's'}`];
   paintLaps();
   if (cams) parts.push(`${cams} 📷`);
-  const lights = R.notes.filter((n) => n.lights).length;
-  if (lights) parts.push(`${lights} 🚦`);
   $('routeInfo').textContent = `${R.loop ? 'Circuit · ' : ''}${dist} · ${parts.join(' · ')} (${corners} corners)`;
   const name = R.spec?.name || '';
   $('chipName').textContent = name || '✎ Name this route';
@@ -407,7 +403,7 @@ function paintSummary() {
   $('chipSave').textContent = saved ? '★' : '☆';
   $('chipSave').classList.toggle('on', saved);
   $('chipMeta').textContent = parts.join(' · ');
-  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review' || S.mode === 'lights';
+  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review';
   paintModes();
 }
 
@@ -422,24 +418,6 @@ async function shareRoute() {
   catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); toast('Link copied — paste it anywhere'); }
   catch { prompt('Copy this link:', url); }
-}
-
-// Traffic lights from OpenStreetMap (highway=traffic_signals), only when switched on.
-async function addLights(route) {
-  try {
-    let s = 90, w = 180, n = -90, e = -180;
-    for (const p of route.samples) { s = Math.min(s, p.lat); n = Math.max(n, p.lat); w = Math.min(w, p.lon); e = Math.max(e, p.lon); }
-    const pad = 0.002, q = `[out:json][timeout:25];node["highway"="traffic_signals"](${s - pad},${w - pad},${n + pad},${e + pad});out skel;`;
-    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
-    const res = await fetch(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
-    clearTimeout(tm);
-    const j = await res.json();
-    if (S.route?.samples !== route.samples) return;
-    S.route.lights = j.elements.map((el) => ({ lat: el.lat, lon: el.lon }));
-    regen();
-    const k = S.route.notes.filter((x) => x.lights).length;
-    toast(k ? `${k} traffic light${k > 1 ? 's' : ''} on this route` : 'No traffic lights mapped on this route');
-  } catch { toast('Traffic lights: could not load (offline?)'); }
 }
 
 // Speed cameras from OpenStreetMap (highway=speed_camera), only when switched on.
@@ -555,8 +533,6 @@ function drawRoute(fit) {
   })).addTo(map);
   S.notes_cams = S.route.notes.flatMap((n) => n.cams || []);
   S.noteLayer.addLayer(L.layerGroup(S.notes_cams.map((c) => L.marker(c, { icon: L.divIcon({ className: 'cam-pin', html: '📷', iconSize: [24, 24] }), interactive: false }))));
-  const mineL = myLights();
-  S.noteLayer.addLayer(L.layerGroup(S.route.notes.flatMap((n) => n.lights || []).filter((c) => !mineL.some((m) => segLen(c, [m.lat, m.lon]) < 40)).map((c) => L.marker(c, { icon: L.divIcon({ className: 'cam-pin', html: '🚦', iconSize: [24, 24] }), interactive: false }))));
   if (fit) fitVisible(S.routeLayer.getBounds());
 }
 
@@ -611,12 +587,11 @@ map.on('contextmenu', (e) => { // long-press
   const el = document.createElement('div'); el.className = 'lp-pop';
   const onRoute = S.route && distToPolyline(S.route.points, ll) <= 30;
   el.innerHTML = (onRoute ? '<button class="pill go" data-a="add">＋ Add a call here</button>' : '') +
-    '<button class="pill ' + (onRoute ? 'ghost' : 'go') + '" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button><button class="pill ghost" data-a="light">🚦 Add traffic light</button>';
+    '<button class="pill ' + (onRoute ? 'ghost' : 'go') + '" data-a="go">🏁 Go here</button><button class="pill ghost" data-a="park">🅿️ Find parking here</button><button class="pill ghost" data-a="save">📍 Save place</button>';
   const pop = L.popup({ closeButton: false, className: 'lp-wrap' }).setLatLng(e.latlng).setContent(el).openOn(map);
   el.onclick = (ev) => {
     const a = ev.target.dataset?.a; if (!a) return;
     map.closePopup(pop);
-    if (a === 'light') { if (addMyLight(ll[0], ll[1], null)) toast('🚦 Traffic light added — tap it to remove'); return; }
     if (a === 'add') openAdd(ll); else if (a === 'go') routeTo(ll); else if (a === 'park') openHunt(ll, 'this spot'); else addPlace(ll[0], ll[1]);
   };
 });
@@ -625,7 +600,6 @@ map.on('click', (e) => {
   const ll = [e.latlng.lat, e.latlng.lng];
   if (S.mode === 'edit') return editAppend(ll);
   if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
-  if (S.mode === 'lights') { if (addMyLight(ll[0], ll[1], null)) toast('🚦 Added — drag it to fine-tune', 2000); return; }
   if (S.mode === 'pick') { S.mode = 'idle'; routeTo(ll); }
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
@@ -762,15 +736,8 @@ bindSeg('setFlats', 'flats');
 $('setFlats').addEventListener('click', () => regen(settings.flats === 'off' ? 'Gentle bends: not called' : 'Gentle bends: flat / kink called'));
 bindSeg('setScale', 'scale');
 bindSeg('setCams', 'cams');
-bindSeg('setLights', 'lights');
 bindSeg('setCrests', 'crests');
-bindSeg('setRed', 'redTimer');
-$('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') { redStop(false); $('redBtn').hidden = true; } toast(settings.redTimer === 'on' ? '🔴 Red light timer on' : '🔴 Red light timer off'); });
-bindSeg('setLightBtn', 'lightBtn');
-$('setLightBtn').addEventListener('click', () => { if (S.nav) $('lightAdd').hidden = settings.lightBtn === 'off'; });
-$('setEditLights').onclick = () => startLightEdit();
 $('setCrests').addEventListener('click', () => regen(settings.crests === 'on' ? 'Automatic crests & dips: on' : 'Automatic crests & dips: off — add your own with ＋ Note'));
-$('setLights').addEventListener('click', () => regen(settings.lights === 'on' ? 'Traffic lights: on' : 'Traffic lights: off'));
 bindSeg('setStreets', 'streets');
 bindSeg('setLabels', 'labels');
 bindSeg('setDists', 'dists');
@@ -952,7 +919,7 @@ function onFix(f) {
   }
   drawMe(f.lat, f.lon, S.heading);
   if (S.follow) followCam(f.lat, f.lon);
-  redOnFix(f);
+  timerOnFix();
 }
 
 const fmtTime = (ms) => { const t = ms / 1000, m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(1).padStart(4, '0')}`; };
@@ -1021,7 +988,6 @@ function startNav() {
   $('notepanel').hidden = false;
   $('btnGo').textContent = 'Stop'; $('btnGo').classList.add('stop');
   $('btnRoute').textContent = '＋ Note';
-  $('lightAdd').hidden = settings.lightBtn === 'off';
   setTimeout(paintCompass); // ▲/N while driving
   $('routeChip').hidden = true;
   map.dragging[S.headingUp ? 'disable' : 'enable']();
@@ -1094,7 +1060,6 @@ function countdown(go) {
 function stopNav() {
   S.nav = false;
   document.body.classList.remove('np-full', 'map-full'); $('mapBack').hidden = true;
-  redStop(false); $('redBtn').hidden = true; $('lightAdd').hidden = true;
   S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
   clearInterval(S.clockTimer); S.clockTimer = null;
@@ -1696,7 +1661,7 @@ $('storeWarn').onclick = () => { $('storeWarn').hidden = true; };
 
 // ---------- backup: everything you've saved, to a file and back ----------
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.board', 'codriver.redlights', 'codriver.mylights', 'codriver.settings'];
+const BACKUP_KEYS = ['codriver.places', 'codriver.routes', 'codriver.recce', 'codriver.fixes', 'codriver.ghosts', 'codriver.pb', 'codriver.board', 'codriver.settings'];
 async function exportBackup() {
   const data = { app: 'codriver', version: 1, exported: new Date().toISOString() };
   for (const k of BACKUP_KEYS) { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch { data[k] = null; } }
@@ -1725,13 +1690,11 @@ async function importBackup(file) {
     'codriver.ghosts': mergeFaster(get('codriver.ghosts', {}), data['codriver.ghosts'], (g) => g.ms),
     'codriver.pb': mergeFaster(get('codriver.pb', {}), data['codriver.pb']),
     'codriver.board': mergeBoards(get('codriver.board', {}), data['codriver.board']),
-    'codriver.redlights': mergeById(get('codriver.redlights', []), data['codriver.redlights']),
-    'codriver.mylights': mergeById(get('codriver.mylights', []), data['codriver.mylights']),
   };
   try { for (const [k, v] of Object.entries(write)) localStorage.setItem(k, JSON.stringify(v)); }
   catch { return toast('Couldn’t import — this browser is blocking saved data (Private tab?)', 6000); }
   recce = write['codriver.recce']; fixes = write['codriver.fixes'];
-  drawPlaces(); paintPlaceChips(); paintCal(); drawMyLights(); if (S.route) regen();
+  drawPlaces(); paintPlaceChips(); paintCal(); if (S.route) regen();
   const added = myPlaces().length + myRoutes().length - before;
   toast(`Backup imported: ${plural(write['codriver.places'].length, 'place')}, ${plural(write['codriver.routes'].length, 'route')} (${added} new)`);
 }
@@ -2086,156 +2049,45 @@ $('simSpeed').oninput = (e) => { if (e.target.value !== '') { settings.simKmh = 
 $('simSpeed').onchange = (e) => setSim(true, e.target.value || settings.simKmh); // snaps 0 → 1, 450 → 300
 setSim(false);
 
-// ---------- 🔴 red light timer: tap when it turns red; it learns each light ----------
-// The 🔴 button shows when you've stopped at a mapped traffic light (Settings → Traffic lights on).
-// First time at a light: counts UP while you wait and saves how long it was red. After that: counts DOWN.
-// Ends when you tap 🟢 or drive off; either way the wait is learned. One beep 10 s before the end.
-function loadRed() { try { return JSON.parse(localStorage.getItem('codriver.redlights') || '[]'); } catch { return []; } }
-function putRed(l) { try { localStorage.setItem('codriver.redlights', JSON.stringify(l)); } catch {} }
-let RED = null; // { t0, at: {lat, lon, heading}, learned, total, beeped, timer, moving }
-function redOnFix(f) {
-  if (!S.nav || S.simRun || settings.redTimer === 'off') { $('redBtn').hidden = true; return; }
-  const kph = S.speed * 3.6;
-  if (RED) { // driving off = green: stop and learn (minus ~1.5 s to get going)
-    RED.moving = kph > 10 ? RED.moving + 1 : 0;
-    if (RED.moving >= 2) redStop(true, 1500);
-    return;
-  }
-  const stopped = kph < 5, light = stopped && nearLight(allLights(S.route), f.lat, f.lon);
-  $('redBtn').hidden = !light;
-  if (light) S.redAt = { lat: f.lat, lon: f.lon, heading: S.heading ?? null };
-}
-function redStart() {
-  if (!S.redAt) return;
-  const learned = findLearned(loadRed(), S.redAt.lat, S.redAt.lon, S.redAt.heading);
-  RED = { t0: Date.now(), at: S.redAt, learned, total: learned?.ms || 0, beeped: false, moving: 0 };
-  $('redBtn').hidden = true; $('redTimer').hidden = false;
+
+// ---------- ⏱ red light timer: one tap counts down your time (Settings: seconds, on/off) ----------
+let TMR = null; // { end, beeped, interval }
+const redSecs = () => Math.max(5, Math.min(600, Math.round(+settings.redSecs || 70)));
+function showTimerBtn() { $('timerBtn').hidden = settings.redTimer === 'off' || !!TMR; $('timerBtnSecs').textContent = redSecs(); }
+function timerStart() {
   unlockAudio();
-  RED.timer = setInterval(paintRed, 200); paintRed();
+  TMR = { end: Date.now() + redSecs() * 1000, beeped: false, moving: 0, t0: Date.now() };
+  $('redTimer').hidden = false; $('redTimer').classList.remove('last', 'green'); showTimerBtn();
+  TMR.interval = setInterval(paintTimer, 200); paintTimer();
 }
-function paintRed() {
-  if (!RED) return;
-  const el = Date.now() - RED.t0;
-  if (!RED.learned) { // learning: count up
-    $('redNum').textContent = Math.floor(el / 1000);
-    $('redSub').textContent = 'learning this light · tap 🟢 when it turns green';
+function paintTimer() {
+  if (!TMR) return;
+  const left = TMR.end - Date.now();
+  if (!TMR.beeped && left <= 10000) { TMR.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
+  if (left <= 0) { // green: show it briefly, then close
+    $('redNum').textContent = 'GREEN'; $('redTimer').classList.add('green'); $('redTimer').classList.remove('last');
+    if (left < -4000) timerStop();
     return;
   }
-  const left = RED.total - el, s = Math.ceil(left / 1000);
-  if (!RED.beeped && left <= 10000) { RED.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
-  $('redNum').textContent = left > 0 ? (RED.learned.n < 2 ? '~' : '') + s : 'soon';
-  $('redSub').textContent = left > 0 ? `learned from ${RED.learned.n} stop${RED.learned.n === 1 ? '' : 's'} · it’s an estimate — the light decides` : `should turn green any moment · +${Math.floor(-left / 1000)} s`;
+  $('redNum').textContent = Math.ceil(left / 1000);
   $('redTimer').classList.toggle('last', left <= 10000);
 }
-function redStop(learnIt, minus = 0) {
-  if (!RED) return;
-  clearInterval(RED.timer);
-  const ms = Date.now() - RED.t0 - minus, before = loadRed(), after = learnIt ? learn(before, RED.at, ms) : before;
-  if (after !== before) {
-    putRed(after);
-    const l = findLearned(after, RED.at.lat, RED.at.lon, RED.at.heading);
-    toast(RED.learned ? `🔴 Red for ${Math.round(ms / 1000)} s · this light now ~${Math.round(l.ms / 1000)} s` : `🔴 Learned: this light is red for ~${Math.round(ms / 1000)} s`, 3500);
-  }
-  RED = null; $('redTimer').hidden = true; $('redTimer').classList.remove('last');
+function timerStop() {
+  if (!TMR) return;
+  clearInterval(TMR.interval); TMR = null;
+  $('redTimer').hidden = true; $('redTimer').classList.remove('last', 'green'); showTimerBtn();
 }
-function redNudge(d) {
-  if (!RED) return;
-  if (RED.learned) { putRed(adjustRed(loadRed(), RED.learned.id, d)); RED.learned = findLearned(loadRed(), RED.at.lat, RED.at.lon, RED.at.heading); }
-  RED.total = Math.max(1000, RED.total + d); RED.beeped = RED.total - (Date.now() - RED.t0) <= 10000; paintRed();
+function timerOnFix() { // drove off (green came early): close it
+  if (!TMR || Date.now() - TMR.t0 < 5000) return;
+  TMR.moving = S.speed * 3.6 > 15 ? TMR.moving + 1 : 0;
+  if (TMR.moving >= 3) timerStop();
 }
-$('redBtn').onclick = (e) => { e.stopPropagation(); redStart(); };
-$('redGreen').onclick = (e) => { e.stopPropagation(); redStop(true); };
-$('redMinus').onclick = (e) => { e.stopPropagation(); redNudge(-5000); };
-$('redPlus').onclick = (e) => { e.stopPropagation(); redNudge(5000); };
-$('redCancel').onclick = (e) => { e.stopPropagation(); redStop(false); };
-
-// ---------- 🚦 your own traffic lights: add them on the go ----------
-// Saved by location (codriver.mylights). They're always used: called ("traffic lights", "at lights, square left"),
-// shown on the map, and the 🔴 red light timer works at them. Map lights (OpenStreetMap) only when switched on.
-function myLights() { try { return JSON.parse(localStorage.getItem('codriver.mylights') || '[]'); } catch { return []; } }
-function putMyLights(l) { try { localStorage.setItem('codriver.mylights', JSON.stringify(l)); return true; } catch { toast('Not saved — this browser is blocking saved data'); return false; } }
-function allLights(r) { return [...(settings.lights === 'on' ? r?.lights || [] : []), ...myLights()]; }
-function addMyLight(lat, lon, heading) {
-  const list = myLights();
-  if (list.some((m) => segLen([lat, lon], [m.lat, m.lon]) < 25)) { toast('🚦 There’s already a traffic light here'); return false; }
-  list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), lat, lon, heading: heading ?? null, added: Date.now() });
-  if (!putMyLights(list)) return false;
-  drawMyLights();
-  if (S.route) regen();
-  return true;
-}
-function removeMyLight(id) {
-  const l = myLights().find((m) => m.id === id); if (!l) return;
-  putMyLights(myLights().filter((m) => m.id !== id));
-  putRed(loadRed().filter((r) => segLen([r.lat, r.lon], [l.lat, l.lon]) > 45)); // and what the timer learned there
-  drawMyLights(); if (S.route) regen('🚦 Traffic light removed');
-}
-function drawMyLights() {
-  S.myLightLayer?.remove();
-  const editing = S.mode === 'lights';
-  S.myLightLayer = L.layerGroup(myLights().map((m) => L.marker([m.lat, m.lon], {
-    icon: L.divIcon({ className: 'cam-pin my-light' + (editing ? ' editing' : ''), html: '🚦', iconSize: editing ? [40, 40] : [28, 28] }),
-    zIndexOffset: editing ? 2000 : 400, draggable: editing, autoPan: true,
-  }).on('dragend', (e) => { const p = e.target.getLatLng(); moveMyLight(m.id, p.lat, p.lng); }).on('click', (e) => {
-    if (S.nav || S.mode === 'edit' || S.mode === 'draw') return;
-    L.DomEvent.stopPropagation(e);
-    const el = document.createElement('div'); el.className = 'lp-pop';
-    const learned = findLearned(loadRed(), m.lat, m.lon, null);
-    el.innerHTML = `<b style="text-align:center">🚦 Your traffic light</b>${learned ? `<small style="text-align:center">red for ~${Math.round(learned.ms / 1000)} s (${learned.n} stop${learned.n === 1 ? '' : 's'})</small>` : ''}${editing ? '' : '<button class="pill ghost" data-a="move">✥ Move / add lights</button>'}<button class="pill danger" data-a="rm">Remove this light</button>`;
-    const pop = L.popup({ closeButton: false, className: 'lp-wrap' }).setLatLng([m.lat, m.lon]).setContent(el).openOn(map);
-    el.onclick = (ev) => {
-      if (ev.target.closest('[data-a="move"]')) { map.closePopup(pop); return startLightEdit([m.lat, m.lon]); }
-      const b = ev.target.closest('[data-a="rm"]'); if (!b) return;
-      if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Tap again to remove'; return; }
-      map.closePopup(pop); removeMyLight(m.id);
-    };
-  }))).addTo(map);
-}
-drawMyLights();
-// driving: tap 🚦 where you are (best when stopped at the line) — then 🔴 is ready for the timer
-$('lightAdd').onclick = (e) => {
-  e.stopPropagation();
-  if (!S.fix) return toast('Waiting for GPS…');
-  const ok = addMyLight(S.fix.lat, S.fix.lon, S.heading ?? null);
-  if (ok) {
-    beep(990, 0.1);
-    redOnFix(S.fix);
-    toast(S.speed * 3.6 < 5 ? '🚦 Traffic light added — tap 🔴 when it turns red' : '🚦 Traffic light added here', 3500);
-  }
-};
-$('addLightHere').onclick = () => { $('addSheet').hidden = true; S.addPin?.remove(); S.addPin = null; if (addAt && addMyLight(addAt[0], addAt[1], null)) toast('🚦 Traffic light added'); };
-
-// ---------- 🚦 edit your traffic lights on the map, any time ----------
-// Drag a 🚦 to move it · tap the map to add one · tap a 🚦 to remove it. What the timer learned moves with it.
-function moveMyLight(id, lat, lon) {
-  const list = myLights(), l = list.find((m) => m.id === id); if (!l) return;
-  const dLat = lat - l.lat, dLon = lon - l.lon;
-  putRed(loadRed().map((r) => (segLen([r.lat, r.lon], [l.lat, l.lon]) <= 45 ? { ...r, lat: r.lat + dLat, lon: r.lon + dLon } : r)));
-  l.lat = lat; l.lon = lon; putMyLights(list);
-  drawMyLights(); if (S.route) regen();
-  toast('🚦 Moved', 1500);
-}
-function startLightEdit(focus) {
-  if (S.nav) return toast('Stop driving first — while driving, use 🚦＋');
-  if (S.mode === 'edit') endEdit(true);
-  if (S.mode === 'review') endReview();
-  S.mode = 'lights'; document.body.classList.add('lightsedit');
-  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
-  map.closePopup();
-  $('bar').hidden = true; $('routeChip').hidden = true; $('lightBar').hidden = false;
-  setRotation(0); map.dragging.enable();
-  drawMyLights();
-  const n = myLights().length;
-  if (focus) map.setView(focus, Math.max(map.getZoom(), 17));
-  else if (n) map.fitBounds(L.latLngBounds(myLights().map((m) => [m.lat, m.lon])).pad(0.3), { maxZoom: 17 });
-  toast(n ? 'Drag a 🚦 to move it · tap the map to add one · tap a 🚦 to remove it' : 'Tap the map where a traffic light is to add it', 5000);
-}
-function endLightEdit() {
-  S.mode = 'idle'; document.body.classList.remove('lightsedit'); $('lightBar').hidden = true; $('bar').hidden = false;
-  drawMyLights(); if (S.route) paintSummary();
-  const n = myLights().length; toast(`🚦 ${n} traffic light${n === 1 ? '' : 's'} saved`, 2000);
-}
-$('lightDone').onclick = endLightEdit;
-$('lightHere').onclick = async () => { const here = await currentPos(); if (addMyLight(here[0], here[1], null)) { map.setView(here, Math.max(map.getZoom(), 17)); toast('🚦 Added at your location — drag it to fine-tune', 2500); } };
-$('btnLights').onclick = () => startLightEdit();
-$('btnLights2').onclick = () => startLightEdit();
+$('timerBtn').onclick = (e) => { e.stopPropagation(); timerStart(); };
+$('redMinus').onclick = (e) => { e.stopPropagation(); if (TMR) { TMR.end -= 5000; paintTimer(); } };
+$('redPlus').onclick = (e) => { e.stopPropagation(); if (TMR) { TMR.end += 5000; if (TMR.end - Date.now() > 10000) TMR.beeped = false; paintTimer(); } };
+$('redCancel').onclick = (e) => { e.stopPropagation(); timerStop(); };
+bindSeg('setRed', 'redTimer');
+$('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') timerStop(); showTimerBtn(); });
+$('setRedSecs').value = redSecs();
+$('setRedSecs').onchange = (e) => { settings.redSecs = Math.max(5, Math.min(600, Math.round(+e.target.value || 70))); e.target.value = settings.redSecs; saveSettings(); showTimerBtn(); toast(`⏱ Timer: ${settings.redSecs} seconds`); };
+showTimerBtn();

@@ -258,40 +258,14 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 - Keeps the 25 best per route. Included in **Export backup**, and imports merge without duplicates.
 - **Simulated runs are never recorded**: no leaderboard entry, personal best or ghost. The results card says "🧪 Simulation — not recorded".
 
-## 🚦 Traffic lights
+## ⏱ Red light timer
 
-**Settings → Traffic lights → Call them** (off by default). Traffic light locations come from OpenStreetMap (`highway=traffic_signals`) and are downloaded for the route only when switched on.
-- At a turn with lights: "**at lights, square left**". Going straight through: "**traffic lights**". On a bend: "right 3, at lights".
-- A junction mapped with a light on each approach gets **one** call, not three.
-- 🚦 icons show on the map, and the route summary counts them.
-- The map knows **where** lights are, not whether they're red or green. Some junctions may be missing.
+A big red **⏱ 70** button on the right of the screen, both while driving and on the map. **Tap it when a light turns red** and it counts down your time in big numbers.
+- **One double beep at 10 seconds left**, and the timer turns yellow. At zero it shows **GREEN** for a few seconds, then closes.
+- **−5 / +5** adjust the countdown, and **✕ Close** stops it. It also closes by itself when you drive off.
+- **Settings → Countdown (seconds)** sets your time (70 s by default, 5–600). **Settings → ⏱ Red light timer** shows or hides the button.
 
-### 🚦 Your own traffic lights
-
-Map data often misses lights, so you can add your own. **They're always used**, whatever the map setting: called ("traffic lights", "at lights, square left"), shown on the map with a purple ring, and the 🔴 timer works at them.
-- **While driving:** tap **🚦＋** (right side) where you are. If you're stopped at the line, **🔴** appears straight away, ready for the timer.
-- **When planning:** long-press the map → **🚦 Add traffic light**, or in Review use **＋ Add at ⊕ → 🚦 Traffic light here**.
-- **Edit any time:** **Route → 🚦 Traffic lights**, the route page's **🚦 Edit traffic lights**, or tap one of your lights → **✥ Move / add lights**. In the editor:
-  - **tap the map** to add a light
-  - **drag** a 🚦 to move it
-  - **📍 Add where I am** adds one at your position
-  - tap a 🚦 to remove it
-
-  What the timer learned at a light moves with it. **Done** saves.
-- **Remove:** tap one of your 🚦 on the map → **Remove this light** (tap twice). What the timer learned there is removed too.
-- Saved by location (`codriver.mylights`), included in Export backup. A light within 25 m of an existing one isn't added twice.
-
-### 🔴 Red light timer
-
-**Settings → 🔴 Red light timer: On / Off**, and **🚦＋ button while driving: Show / Hide**. **Settings → 🚦 Add, move or delete my traffic lights** opens the editor with no route needed.
-
-When you **stop at a traffic light**, one of yours or a map one with the setting on (under 5 km/h, within 40 m), a big **🔴 RED** button appears. Tap it when the light turns red.
-- **First time at a light, it learns.** It counts **up** while you wait. Tap **🟢 Green** when it changes, or just drive off, and it saves how long that light was red.
-- **Every time after, it counts down** from the learned time, e.g. 56… 55… It shows "~" until it has learned the light from 2 stops.
-- **One double beep at 10 seconds left**, and the timer turns yellow. At zero it says "should turn green any moment" and counts the extra seconds.
-- It keeps learning: each stop updates that light's average (following roughly the last 8 stops). The same junction from another direction is learned separately.
-- **−5 / +5** nudge the time. **✕** closes without learning. Stops shorter than 5 s or longer than 3 minutes are ignored.
-- It never says go: it's an estimate, and the light decides. Not active in simulation. Learned lights (`redlight.js`, `codriver.redlights`) are included in Export backup.
+It's a plain countdown: it doesn't need map data, and it works at any light.
 
 ## Distances in the calls
 
