@@ -130,7 +130,7 @@ body.zfar .note-tip { display: none; }
 #countdown { position: fixed; inset: 0; z-index: 950; display: grid; place-items: center; background: #000b; pointer-events: none; }
 #cdNum { font: 900 min(46vw, 260px)/1 system-ui, sans-serif; color: var(--warn); animation: cdpop .9s ease-out; text-shadow: 0 6px 30px #000; }
 #cdNum.go { color: var(--go); }
- from { transform: scale(1.8); opacity: 0; } 30% { opacity: 1; } to { transform: scale(1); opacity: 1; }
+@keyframes cdpop { from { transform: scale(1.8); opacity: 0; } 30% { opacity: 1; } to { transform: scale(1); opacity: 1; } }
 #resName { font-size: 22px; font-weight: 800; color: var(--accent); }
 #resMap { width: 100%; height: auto; background: #0d0f12; border-radius: 14px; margin: 10px 0; }
 #resMap .r-line { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
@@ -181,7 +181,6 @@ h3.sub { font-size: 14px; color: var(--dim); margin: 18px 0 4px; text-transform:
 .lp-wrap .leaflet-popup-content-wrapper { background: #15181d; color: var(--ink); border-radius: 14px; }
 .lp-wrap .leaflet-popup-tip { background: #15181d; }
 .edit-pt.locked { box-shadow: 0 2px 6px #000a; width: 34px !important; height: 34px !important; margin: -17px 0 0 -17px !important; } /* start/finish: a bit bigger, easy to grab */
-
 #routeChip { flex-wrap: wrap; }
 .mode-row { flex: 1 0 100%; display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none; }
 .mode-row::-webkit-scrollbar { display: none; }
@@ -272,7 +271,7 @@ body.reviewing #toast { bottom: auto; top: calc(16px + var(--safe-t)); }
 #recBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--warn);
   border-radius: 18px; padding: 12px; }
 #recInfo { text-align: center; font: 900 26px/1.2 ui-monospace, "SF Mono", Menlo, monospace; color: #ff5a3c; animation: recblink 1.4s infinite; }
- 50% { opacity: .55; }
+@keyframes recblink { 50% { opacity: .55; } }
 #recBar .pill.danger { background: var(--warn); color: #fff; }
 
 .add-pin { background: #b67cff; color: #fff; border: 3px solid #fff; border-radius: 50%; display: grid; place-items: center; font: 900 20px/1 system-ui; box-shadow: 0 2px 8px #000a; }
@@ -302,30 +301,8 @@ body.map-full #bar { display: none; }
 
 /* ============ shared: square, chunky, no blur ============ */
 body[class*="skin-"] #notepanel, body[class*="skin-"] #bar, body[class*="skin-"] #routeChip, body[class*="skin-"] .sheet { backdrop-filter: none; }
-body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: square; stroke-linejoin: bevel; }
 
 /* ============ 1. ARCADE — 8-bit pixel ============ */
-body.skin-arcade { --route: #ffd400; --bg: #000; --panel: #000; --ink: #fff; --dim: #8b8b9a; --accent: #ffd400; --go: #00e436; --warn: #ff004d; --line: #fff;
-  font-family: 'Press Start 2P', monospace; }
-body.skin-arcade #notepanel, body.skin-arcade #bar, body.skin-arcade #routeChip {
-  border: 0; border-radius: 0; background: #000;
-  box-shadow: 0 -4px 0 0 #fff, 0 4px 0 0 #fff, -4px 0 0 0 #fff, 4px 0 0 0 #fff; /* pixel frame */
-  margin: 4px; }
-body.skin-arcade #noteBig, body.skin-arcade #noteDist { font-family: 'Press Start 2P', monospace; letter-spacing: 0; line-height: 1.15; }
-body.skin-arcade #notepanel #noteBig { font-size: clamp(26px, 9vw, 44px); }
-body.skin-arcade #notepanel #noteDist { font-size: clamp(26px, 9vw, 44px); color: var(--accent); }
-body.skin-arcade #noteNext, body.skin-arcade #lastCall, body.skin-arcade .np-stats { font-size: 10px !important; line-height: 1.6; }
-body.skin-arcade .np-stats { border-top: 4px dotted #fff; }
-body.skin-arcade #raceClock { font-family: 'Press Start 2P', monospace; font-size: 16px !important; color: var(--go); }
-body.skin-arcade #glyph path { stroke: var(--accent); stroke-width: 12; }
-body.skin-arcade .pill, body.skin-arcade .round { border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 11px;
-  background: #2a2aff; color: #fff; box-shadow: inset -4px -4px 0 #0000a8, inset 4px 4px 0 #6b6bff; border: 0; }
-body.skin-arcade .pill.go { background: var(--go); color: #000; box-shadow: inset -4px -4px 0 #008751, inset 4px 4px 0 #9bff9b; }
-body.skin-arcade .pill.go.stop { background: var(--warn); color: #fff; box-shadow: inset -4px -4px 0 #7e2553, inset 4px 4px 0 #ff77a8; }
-body.skin-arcade #speed { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--accent); }
-body.skin-arcade #speedBox small { font-size: 8px; margin-top: 4px; }
-body.skin-arcade .leaflet-tile-pane { filter: grayscale(1) contrast(1.6) brightness(.55) !important; image-rendering: pixelated; }
-body.skin-arcade #fixBtn { border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 9px; }
 
 /* ============ 2. LCD — old stopwatch / tripmeter display ============ */
 body.skin-lcd { --bg: #1d2016; --panel: #2b2f26; --ink: #d7dcc8; --dim: #8a917a; --accent: #c3cda6; --go: #c3cda6; --warn: #e0583f; --line: #55594d; --route: #c3cda6;
@@ -379,54 +356,17 @@ body.skin-trip .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.4
 body.skin-trip #fixBtn { background: #000; color: #ffb000; border: 1px solid #3a2500; border-radius: 4px; font-family: 'Share Tech Mono', monospace; }
 
 /* ============ 4. DOT-MATRIX — red LED pit board / timing tower ============ */
-body.skin-dots { --route: #ff2a1a; --bg: #050505; --panel: #000; --ink: #ff2a1a; --dim: #8a1a12; --accent: #ff2a1a; --go: #19ff5a; --warn: #ffe100; --line: #2a0805;
-  font-family: 'DotGothic16', monospace; }
-body.skin-dots #notepanel, body.skin-dots #routeChip { border-radius: 0; border: 3px solid #1a1a1a; background: #000; position: fixed; }
 /* the LED grid: only on the big things, so the small text stays readable */
-body.skin-dots #glyph, body.skin-dots #noteBig, body.skin-dots #noteDist {
-  -webkit-mask: radial-gradient(circle, #000 1.6px, transparent 2px) 0 0 / 4px 4px; mask: radial-gradient(circle, #000 1.6px, transparent 2px) 0 0 / 4px 4px; }
-body.skin-dots #noteBig, body.skin-dots #noteDist, body.skin-dots #raceClock, body.skin-dots #speed { font-family: 'Silkscreen', monospace; font-weight: 700;
-  text-shadow: 0 0 8px #ff2a1a; }
-body.skin-dots #notepanel #noteBig { font-size: clamp(36px, 12vw, 66px); letter-spacing: 2px; }
-body.skin-dots #notepanel #noteDist { font-size: clamp(36px, 12vw, 66px); color: var(--warn); text-shadow: 0 0 8px #ffb800; }
-body.skin-dots #noteNext, body.skin-dots #lastCall, body.skin-dots .np-stats { color: #ff5a40; }
-body.skin-dots .np-stats { border-top: 3px solid #1a0402; }
-body.skin-dots #raceClock { color: var(--go); text-shadow: 0 0 8px #19ff5a; font-size: 24px !important; }
-body.skin-dots #glyph path { stroke: #ff2a1a; stroke-width: 12; filter: drop-shadow(0 0 6px #ff2a1a); }
-body.skin-dots #bar { background: #000; border: 3px solid #1a1a1a; border-radius: 0; }
-body.skin-dots .pill, body.skin-dots .round { border-radius: 0; font-family: 'Silkscreen', monospace; background: #1a0402; color: #ff2a1a; border: 2px solid #ff2a1a; }
-body.skin-dots .pill.go { background: #19ff5a; color: #000; border-color: #19ff5a; }
-body.skin-dots .pill.go.stop { background: #ff2a1a; color: #000; border-color: #ff2a1a; }
-body.skin-dots #speed { color: var(--warn); text-shadow: none; font: 400 34px/1 'DotGothic16', monospace; }
-body.skin-dots .leaflet-tile-pane { filter: grayscale(1) brightness(.35) contrast(1.5) !important; }
-body.skin-dots #fixBtn { border-radius: 0; background: #000; color: #ff2a1a; border: 2px solid #ff2a1a; font-family: 'Silkscreen', monospace; }
 
 /* sheets follow the skin */
-body.skin-arcade .sheet { background: #000; border-top: 4px solid #fff; border-radius: 0; }
-body.skin-arcade .sheet h2 { font-size: 15px; }
-body.skin-arcade .sheet label, body.skin-arcade .fine, body.skin-arcade .sheet small { font-size: 10px; line-height: 1.6; }
-body.skin-arcade .seg, body.skin-arcade .chips button, body.skin-arcade select, body.skin-arcade input { border-radius: 0; }
-body.skin-arcade .seg button { font-size: 10px; }
 body.skin-lcd .sheet { background: #24271f; }
 body.skin-trip .sheet { background: linear-gradient(#1b1b1b, #0d0d0d); }
 body.skin-trip .sheet h2 { text-transform: uppercase; letter-spacing: 2px; }
-body.skin-dots .sheet { background: #000; border-top: 3px solid #1a1a1a; border-radius: 0; }
-body.skin-dots .seg { border-radius: 0; }
 #setSkin { flex-wrap: wrap; }
 #setSkin button { min-width: 33%; }
-body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linejoin: round; }
 body.skin-lcd #notepanel, body.skin-lcd #routeChip { color: var(--ink); }
-body.skin-arcade #chipDist { font-size: 16px; line-height: 1.4; }
-body.skin-arcade #chipMeta, body.skin-arcade #chipName { font-size: 9px; line-height: 1.6; }
-body.skin-arcade #routeChip .pill { padding: 8px 10px; font-size: 10px; }
-body.skin-arcade #toast { font-size: 11px; line-height: 1.6; border-radius: 0; }
-body.skin-arcade #searchInput, body.skin-arcade #routeName { border-radius: 0; font-size: 11px; }
-body.skin-dots #toast, body.skin-trip #toast { border-radius: 0; }
-/* Arcade: completely flat — no shadows anywhere */
-body.skin-arcade *, body.skin-arcade *::before, body.skin-arcade *::after { box-shadow: none !important; text-shadow: none !important; }
-body.skin-arcade #glyph path, body.skin-arcade #me svg, body.skin-arcade .me-marker svg, body.skin-arcade .cam-pin { filter: none !important; }
-body.skin-arcade #notepanel, body.skin-arcade #bar, body.skin-arcade #routeChip { border: 4px solid #fff; margin: 0; }
-body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: round; } /* square caps made the arrow tip jagged */
+body.skin-trip #toast { border-radius: 0; }
+/* Arcade: completely flat — no shadows anywhere */ /* square caps made the arrow tip jagged */
 
 /* leaderboard */
 .bd { border: 1px solid var(--line); border-radius: 14px; padding: 10px; margin: 10px 0; }
@@ -442,9 +382,6 @@ body.skin-arcade #glyph path, body.skin-dots #glyph path { stroke-linecap: round
 .bd-time b { font: 800 20px/1.1 ui-monospace, "SF Mono", Menlo, monospace; }
 .bd-del { border: 1px solid var(--line); background: transparent; border-radius: 10px; min-width: 40px; min-height: 36px; }
 .bd-del.armed, .bd-clear.armed { background: var(--warn); color: #fff; border-color: var(--warn); }
-body.skin-arcade .bd, body.skin-arcade .bd-del { border-radius: 0; }
-body.skin-arcade .bd-time b { font-family: 'Press Start 2P', monospace; font-size: 14px; }
-body.skin-arcade .bd-head small, body.skin-arcade .bd-time small, body.skin-arcade .bd-date { font-size: 9px; line-height: 1.5; }
 
 /* simulation speed */
 .sim-box { display: grid; grid-template-columns: auto 5.5em auto; align-items: center; gap: 8px 10px; margin-top: 12px; }
@@ -452,7 +389,6 @@ body.skin-arcade .bd-head small, body.skin-arcade .bd-time small, body.skin-arca
 #simSpeed { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; text-align: center; font-variant-numeric: tabular-nums; font-weight: 800; }
 .sim-unit { color: var(--dim); }
 #simRange { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
-body.skin-arcade #simSpeed { border-radius: 0; font-size: 12px; }
 #redTimer { position: fixed; left: 8px; right: 8px; bottom: calc(110px + var(--safe-b)); z-index: 700; text-align: center;
   background: #1a0003; border: 3px solid #d0021b; border-radius: 18px; padding: 10px 12px 12px; }
 #redTimer.last { border-color: #ffcc00; }
@@ -460,8 +396,6 @@ body.skin-arcade #simSpeed { border-radius: 0; font-size: 12px; }
 #redTimer.last #redNum { color: #ffcc00; }
 .red-actions { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 6px; }
 .red-actions .pill { min-height: 48px; }
- body.skin-arcade #redTimer { border-radius: 0; box-shadow: none; }
-body.skin-arcade #redNum { font-family: 'Press Start 2P', monospace; font-size: clamp(44px, 16vw, 84px); line-height: 1.2; }
 
 /* ⏱ red light timer button */
 #timerBtn { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(120px + var(--safe-b)); z-index: 700;
@@ -471,11 +405,80 @@ body.skin-arcade #redNum { font-family: 'Press Start 2P', monospace; font-size: 
 body.map-full #timerBtn { bottom: calc(80px + var(--safe-b)); }
 #redTimer.green { border-color: #2fd27a; background: #002a12; }
 #redTimer.green #redNum { color: #2fd27a; }
-body.skin-arcade #timerBtn { border-radius: 0; box-shadow: none; }
-body.skin-arcade #timerBtn b { font-family: 'Press Start 2P', monospace; font-size: 12px; }
 #setRedSecs { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
-body.skin-arcade #setRedSecs { border-radius: 0; }
 #redNum { margin-bottom: 10px; }
 /* the ⏱ button never covers the review / recording bars */
 #timerBtn { z-index: 645; }
 body.reviewing #timerBtn { display: none; }
+
+/* ============ TERMINAL — black & red CRT, like Criminal Terminal ============ */
+body.skin-term {
+  --bg: #050000; --panel: rgba(10, 1, 1, .94); --ink: #ff3b30; --dim: #a3231d; --accent: #ff3b30; --go: #ff3b30; --warn: #ffb642;
+  --line: #6e1410; --route: #ff2b22; --phos: #ff3b30; --phos-dark: #3d0907;
+  font-family: "Courier New", Courier, monospace;
+  background: radial-gradient(ellipse at center, #120202 0%, #050000 78%);
+  text-shadow: 0 0 2px rgba(255, 59, 48, .5), 0 0 6px rgba(255, 59, 48, .18);
+}
+/* fine scanlines + screen vignette, over everything (taps go through) */
+body.skin-term::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2000;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px); opacity: .55; }
+body.skin-term::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2001;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, .55) 100%), radial-gradient(ellipse 90% 60% at 50% 40%, rgba(255, 59, 48, .04), transparent 70%); }
+body.skin-term #notepanel { animation: termflick 8s infinite; }
+@keyframes termflick { 0%, 96%, 100% { opacity: 1; } 97% { opacity: .94; } 98% { opacity: 1; } 99% { opacity: .97; } }
+@media (prefers-reduced-motion: reduce) { body.skin-term #notepanel { animation: none; } }
+body.skin-term button, body.skin-term input, body.skin-term select { font-family: "Courier New", Courier, monospace; }
+
+/* panels: thin phosphor border, dark red glass, inset shade */
+body.skin-term #notepanel, body.skin-term #bar, body.skin-term #routeChip, body.skin-term #reviewBar, body.skin-term #recBar,
+body.skin-term #editBar, body.skin-term #drawBar, body.skin-term .sheet, body.skin-term #redTimer {
+  border: 1px solid var(--dim); border-radius: 2px;
+  background: linear-gradient(180deg, rgba(110, 20, 16, .16), rgba(5, 0, 0, .94));
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(61, 9, 7, .6), 0 0 0 1px rgba(61, 9, 7, .6); }
+body.skin-term .sheet { background: #070101; border-width: 1px 0 0; }
+body.skin-term .sheet h2 { letter-spacing: 3px; text-transform: uppercase; font-size: 16px; text-shadow: 0 0 6px rgba(255, 59, 48, .6); }
+body.skin-term .sheet h2::before, body.skin-term h3.sub::before { content: "▓ "; }
+body.skin-term h3.sub { letter-spacing: 3px; color: var(--ink); border-bottom: 1px solid var(--phos-dark); padding-bottom: 4px; }
+body.skin-term .sheet label { color: var(--dim); letter-spacing: 1px; text-transform: uppercase; font-size: 12px; }
+body.skin-term .fine, body.skin-term small { color: var(--dim); }
+
+/* the call */
+body.skin-term #noteBig { font-family: "Courier New", Courier, monospace; font-weight: 900; letter-spacing: 1px; color: var(--ink);
+  text-shadow: 0 0 4px rgba(255, 59, 48, .8), 0 0 16px rgba(255, 59, 48, .35); }
+body.skin-term #noteDist { font-family: "Courier New", Courier, monospace; color: #ff6a5e; text-shadow: 0 0 6px rgba(255, 106, 94, .6); }
+body.skin-term #noteBig.caution { color: var(--warn); text-shadow: 0 0 6px rgba(255, 182, 66, .6); }
+body.skin-term #noteNext, body.skin-term #lastCall { color: var(--dim); letter-spacing: 1px; }
+body.skin-term .np-stats { border-top: 1px solid var(--phos-dark); }
+body.skin-term #raceClock { color: var(--ink); background: transparent; font-family: "Courier New", Courier, monospace; }
+body.skin-term #glyph path { stroke: var(--ink); filter: drop-shadow(0 0 4px rgba(255, 59, 48, .7)); }
+body.skin-term #glyph text { fill: var(--ink); }
+body.skin-term #speed { color: var(--ink); font-family: "Courier New", Courier, monospace; text-shadow: 0 0 6px rgba(255, 59, 48, .6); }
+body.skin-term #chipDist, body.skin-term #chipName { color: var(--ink); }
+
+/* buttons: outlined terminal keys; the main one is solid phosphor with black text */
+body.skin-term .pill, body.skin-term .round, body.skin-term .fix-btn, body.skin-term .chips button, body.skin-term .add-col button {
+  border: 1px solid var(--dim); border-radius: 2px; background: rgba(110, 20, 16, .12); color: var(--ink);
+  text-transform: uppercase; letter-spacing: 1px; box-shadow: none; }
+body.skin-term .pill.go, body.skin-term #btnCompass { background: var(--ink); color: #0a0000; border-color: var(--ink); text-shadow: none;
+  box-shadow: 0 0 10px rgba(255, 59, 48, .35); }
+body.skin-term .pill.go.stop { background: #0a0000; color: var(--ink); border: 2px solid var(--ink); }
+body.skin-term .pill.danger { border-color: var(--warn); color: var(--warn); }
+body.skin-term .seg { border: 1px solid var(--dim); border-radius: 2px; }
+body.skin-term .seg button.on, body.skin-term .chips button.on { background: var(--ink); color: #0a0000; text-shadow: none; }
+body.skin-term input[type="text"], body.skin-term input[type="number"], body.skin-term select, body.skin-term #searchInput {
+  background: #000; border: 1px solid var(--dim); border-radius: 2px; color: var(--ink); }
+body.skin-term input[type="range"] { accent-color: var(--ink); }
+
+/* ⏱ timer */
+body.skin-term #timerBtn { border-radius: 2px; border: 2px solid var(--ink); background: #0a0000; color: var(--ink);
+  box-shadow: 0 0 12px rgba(255, 59, 48, .45); text-shadow: 0 0 4px rgba(255, 59, 48, .7); }
+body.skin-term #redNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 6px rgba(255, 59, 48, .8), 0 0 20px rgba(255, 59, 48, .35); }
+body.skin-term #redTimer.last { border-color: var(--warn); }
+body.skin-term #redTimer.last #redNum { color: var(--warn); text-shadow: 0 0 8px rgba(255, 182, 66, .7); }
+
+/* map: dark, tinted red */
+body.skin-term .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.42) contrast(1.35) sepia(1) hue-rotate(-40deg) saturate(2.4) !important; }
+body.skin-term .leaflet-container { background: #050000; }
+body.skin-term #toast { border: 1px solid var(--dim); border-radius: 2px; background: #0a0000; color: var(--ink); }
+body.skin-term #countdown #cdNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 20px rgba(255, 59, 48, .6); }
+body.skin-term #cdNum.go { color: #ffb642; }

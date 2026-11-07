@@ -274,13 +274,12 @@ By default the calls **don't say the distance to the next call** ("left 4, 200, 
 ## Looks (skins)
 
 **Settings → Look** picks the style. The app remembers your choice.
-- **👾 Arcade** (default): 8-bit pixel font, white pixel frames, chunky buttons.
+- **▓ Terminal** (default): black and red CRT terminal, in the style of the Criminal Terminal game. Glowing red monospace text, fine scanlines, a screen vignette, thin phosphor borders, solid red keys with black text, and "▓" section titles.
 - **LCD**: an olive stopwatch-style screen with dark digits.
 - **Tripmeter**: a black box with glowing amber digits, like a rally instrument.
-- **Dot-matrix**: red LED dots, like a pit board.
 - **Classic**: the original look.
 
-The map and the route line are tinted to match.
+The map and the route line are tinted to match. Anyone who had the retired Arcade or Dot-matrix skin is moved to Terminal.
 
 ## Time attack (circuits)
 

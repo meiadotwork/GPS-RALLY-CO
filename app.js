@@ -18,8 +18,9 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'arcade', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
+if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
 // your corrections to calls ("that call was wrong"), pinned by location, on this phone
