@@ -71,7 +71,8 @@ let firstFix = true;
 navigator.geolocation?.watchPosition((p) => {
   if (S.nav) return;
   const c = p.coords, f = { lat: c.latitude, lon: c.longitude, heading: c.heading, speed: c.speed, accuracy: c.accuracy };
-  S.fix = f;
+  S.fix = f; S.fixAt = Date.now();
+  if (S.route && !S.appr && !S.apprTried && S.mode === 'idle') refreshApproach();
   const moving = f.speed != null && f.speed > 1 && f.heading != null && !isNaN(f.heading);
   drawMe(f.lat, f.lon, moving ? f.heading : null);
   if (!S.accCircle) S.accCircle = L.circle([f.lat, f.lon], { radius: f.accuracy || 20, color: '#4aa3ff', weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
@@ -337,6 +338,7 @@ function setRoute(r, { fit = true } = {}) {
     if (S.race && !gen.loop) S.race.total = gen.total; // a reroute changes the length: the finish is the new end
   }
   drawRoute(fit);
+  if (!S.nav && !S.liaison && !r.spec?.liaison) refreshApproach();
   $('btnGo').disabled = false;
   $('routeActions').hidden = false;
   $('thisRoute').hidden = false;
@@ -403,8 +405,10 @@ function paintSummary() {
   const saved = !!(R.spec?.savedId && myRoutes().some((x) => x.id === R.spec.savedId));
   $('chipSave').textContent = saved ? '★' : '☆';
   $('chipSave').classList.toggle('on', saved);
+  if (S.appr?.r) parts.push(`+${fmtDist(S.appr.r.distance)} to get there`);
   $('chipMeta').textContent = parts.join(' · ');
-  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review';
+  paintApproach();
+  $('routeChip').hidden = S.nav || S.mode === 'draw' || S.mode === 'edit' || S.mode === 'review' || S.mode === 'approach';
   paintModes();
 }
 
@@ -503,7 +507,7 @@ function cancelRoute() {
   if (S.mode === 'edit') endEdit(false);
   S.hitLayer?.remove();
   S.routeLayer?.remove(); S.noteLayer?.remove();
-  S.route = null; S.sched = null; S.tracker = null;
+  S.route = null; S.sched = null; S.tracker = null; clearApproach(true);
   $('btnGo').disabled = true;
   $('routeActions').hidden = true;
   $('thisRoute').hidden = true;
@@ -601,6 +605,7 @@ map.on('click', (e) => {
   const ll = [e.latlng.lat, e.latlng.lng];
   if (S.mode === 'edit') return editAppend(ll);
   if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
+  if (S.mode === 'approach') return apprAdd(ll);
   if (S.mode === 'pick') { S.mode = 'idle'; routeTo(ll); }
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
@@ -864,7 +869,7 @@ function onFix(f) {
   }
   S.speed = S.speed * 0.4 + (v || 0) * 0.6;
   S.prevFix = { lat: f.lat, lon: f.lon, t: ft, now };
-  S.fix = f;
+  S.fix = f; S.fixAt = now;
   if (S.liaison && segLen([f.lat, f.lon], S.liaison.start) <= Math.min(70, Math.max(45, (f.accuracy || 10) * 1.5))) return arriveAtStart();
 
   const loc = S.tracker.locate(f.lat, f.lon);
@@ -2144,8 +2149,8 @@ async function startDrive() {
   if (simKmh() > 0 || S.route.spec?.parking) return startNav();
   const start = S.route.points[0];
   let here = S.fix ? [S.fix.lat, S.fix.lon] : null;
-  try { // a fresh position, so "how far is the start" is right now, not where you were a while ago
-    const pos = await new Promise((ok, no) => navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy: true, maximumAge: 3000, timeout: 4000 }));
+  if (!here || !(Date.now() - (S.fixAt || 0) < 10000)) try { // only wait for GPS if the last position is old
+    const pos = await new Promise((ok, no) => navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy: true, maximumAge: 5000, timeout: 3000 }));
     here = [pos.coords.latitude, pos.coords.longitude];
   } catch { /* keep the last known position */ }
   if (S.nav) return;
@@ -2153,10 +2158,14 @@ async function startDrive() {
   toast(`Guiding you to the start (${fmtDist(segLen(here, start))} away) — timing starts there`, 5000);
   try {
     VEHICLE = S.route.spec?.vehicle || 'car';
-    const r = await osrmRoute([here, start], S.speed > 3 ? S.heading : null, 'fastest', !!S.route.spec?.noToll);
+    // the way there you chose on the route page (re-planned from here, through your points, if you've moved)
+    const A = S.appr && segLen(A_end(), start) < 5 ? S.appr : null;
+    const via = A ? [here, ...A.via.slice(1, -1), start] : [here, start];
+    const r = A && segLen(A.via[0], here) <= 300 ? A.r : await osrmRoute(via, S.speed > 3 ? S.heading : null, A?.mode || 'fastest', !!S.route.spec?.noToll);
     const main = S.route;
     S.liaison = { main, start };
-    setRoute({ ...r, spec: { via: [here, start], name: 'To the start', noToll: !!main.spec?.noToll, liaison: true }, loop: false, dest: start, waypoints: [start] }, { fit: false });
+    clearApproach(false);
+    setRoute({ ...r, spec: { via, name: 'To the start', noToll: !!main.spec?.noToll, liaison: true }, loop: false, dest: start, waypoints: via.slice(1) }, { fit: false });
     for (const n of S.route.notes) if (n.kind === 'finish') n.label = 'start'; // "finish" would be confusing here
     S.liaisonLayer = L.polyline(main.loop ? [...main.points, main.points[0]] : main.points, { color: getComputedStyle(document.body).getPropertyValue('--route').trim() || '#ffcc00', weight: 4, opacity: 0.45, dashArray: '8 10', interactive: false }).addTo(map);
     startNav();
@@ -2170,3 +2179,95 @@ function arriveAtStart() {
   toast(m.loop ? '🏁 At the start/finish line — get ready' : '🏁 At the start — get ready', 3000);
   startNav(); // countdown, or time attack, as usual
 }
+
+// ---------- 🧭 getting there: the way from you to a route's start, shown and editable before you drive ----------
+// Load a circuit (or stage) away from where you are: the way there is planned at once, dotted on the map.
+// Route page → "Getting there": Fastest / Shortest, ✎ change it (tap the map to add points it must pass, drag,
+// tap to remove), or re-plan from where you are now. Start drives exactly that way (the liaison, no clock).
+const A_end = () => S.appr.via.at(-1);
+function clearApproach(forget) {
+  S.apprLayer?.remove(); S.apprLayer = null; S.apprPtsLayer?.remove(); S.apprPtsLayer = null;
+  if (forget) { S.appr = null; S.apprTried = false; }
+  paintApproach();
+}
+async function refreshApproach({ from = null, keep = true } = {}) {
+  if (!S.route || S.nav || S.route.spec?.parking || S.route.spec?.liaison) return clearApproach(true);
+  const start = S.route.points[0];
+  if (S.fix && !from && segLen([S.fix.lat, S.fix.lon], start) <= LIAISON_M) { clearApproach(false); S.appr = null; return paintApproach(); } // you're there
+  if (keep && S.appr && segLen(A_end(), start) < 5 && !from) return drawApproach(); // same route: keep your choice
+  const here = from || (S.fix ? [S.fix.lat, S.fix.lon] : null);
+  S.apprTried = true;
+  if (!here || segLen(here, start) <= LIAISON_M) return clearApproach(false), (S.appr = null), paintApproach();
+  const mids = S.appr && segLen(A_end(), start) < 5 ? S.appr.via.slice(1, -1) : [];
+  S.appr = { via: [here, ...mids, start], mode: S.appr?.mode || 'fastest', r: null };
+  await planApproach(true);
+}
+async function planApproach(fit = false) {
+  const A = S.appr; if (!A) return;
+  try {
+    VEHICLE = S.route?.spec?.vehicle || 'car';
+    const r = await osrmRoute(A.via, null, A.mode, !!S.route?.spec?.noToll);
+    if (S.appr !== A) return;
+    A.r = r;
+    drawApproach();
+    if (fit && S.mode === 'idle' && S.routeLayer) setTimeout(() => { if (S.appr === A && !S.nav) fitVisible(L.latLngBounds([...r.points, ...S.route.points])); }, 400); // you and the route, both in view
+  } catch (e) { toast('Couldn’t plan the way there: ' + e.message); }
+  if (S.route) paintSummary();
+}
+function drawApproach() {
+  S.apprLayer?.remove(); S.apprLayer = null;
+  const A = S.appr; if (!A?.r || S.nav) return paintApproach();
+  const col = getComputedStyle(document.body).getPropertyValue('--route').trim() || '#ffcc00';
+  S.apprLayer = L.polyline(A.r.points, { color: col, weight: 5, opacity: 0.9, dashArray: '1 10', lineCap: 'round', interactive: false }).addTo(map);
+  if (S.mode === 'approach') drawApproachPts();
+  paintApproach();
+}
+function paintApproach() {
+  const A = S.appr, box = $('apprBox'); if (!box) return;
+  box.hidden = !A?.r;
+  if (!A?.r) return;
+  $('apprInfo').textContent = `${fmtDist(A.r.distance)} · ~${fmtDur(A.r.duration)} from you to the ${S.route?.loop ? 'start/finish line' : 'start'}${A.via.length > 2 ? ` · through ${A.via.length - 2} point${A.via.length > 3 ? 's' : ''} of yours` : ''}. No timing on the way.`;
+  $('apprMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.m === A.mode));
+}
+// editing the way there
+let apprHist = [];
+function startApproachEdit() {
+  if (!S.appr?.r) return;
+  S.mode = 'approach'; apprHist = []; document.body.classList.add('appredit');
+  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
+  $('bar').hidden = true; $('routeChip').hidden = true; $('apprBar').hidden = false;
+  setRotation(0); map.dragging.enable();
+  drawApproach();
+  fitVisible(L.latLngBounds(S.appr.r.points), 120, 170);
+  toast('Tap the map where the way should pass · drag a point to move it · tap it to remove', 5000);
+}
+function endApproachEdit() {
+  S.mode = 'idle'; document.body.classList.remove('appredit'); $('apprBar').hidden = true; $('bar').hidden = false;
+  S.apprPtsLayer?.remove(); S.apprPtsLayer = null;
+  paintSummary();
+}
+function drawApproachPts() {
+  S.apprPtsLayer?.remove();
+  const v = S.appr.via, last = v.length - 1;
+  S.apprPtsLayer = L.layerGroup(v.map((p, i) => {
+    const end = i === 0 || i === last;
+    const m = L.marker(p, { draggable: !end, autoPan: true, zIndexOffset: end ? 1500 : 2000,
+      icon: L.divIcon({ className: 'edit-pt' + (i === 0 ? ' first' : i === last ? ' last' : ''), html: i === 0 ? '📍' : i === last ? 'S' : String(i), iconSize: [30, 30] }) });
+    if (!end) {
+      m.on('dragend', (e) => { const ll = e.target.getLatLng(); apprHist.push(v.map((q) => q.slice())); S.appr.via[i] = [ll.lat, ll.lng]; planApproach(); });
+      m.on('click', (e) => { L.DomEvent.stopPropagation(e); apprHist.push(v.map((q) => q.slice())); S.appr.via.splice(i, 1); planApproach(); });
+    } else m.on('click', (e) => { L.DomEvent.stopPropagation(e); toast(i === 0 ? 'This is where you are — the way starts here' : 'The start of your route — the way ends here'); });
+    return m;
+  })).addTo(map);
+  $('apprUndo').disabled = !apprHist.length;
+}
+function apprAdd(ll) {
+  const v = S.appr.via; apprHist.push(v.map((q) => q.slice()));
+  v.splice(bestInsertIndex(v, ll), 0, ll); // goes between the two points it fits best
+  planApproach();
+}
+$('apprUndo').onclick = () => { if (!apprHist.length) return; S.appr.via = apprHist.pop(); planApproach(); };
+$('apprDone').onclick = endApproachEdit;
+$('apprEdit').onclick = startApproachEdit;
+$('apprFrom').onclick = async () => { const here = await currentPos(); toast('Planning from where you are…', 3000); await refreshApproach({ from: here }); };
+$('apprMode').addEventListener('click', (e) => { const m = e.target.closest('button')?.dataset.m; if (!m || !S.appr || S.appr.mode === m) return; S.appr.mode = m; planApproach(); });

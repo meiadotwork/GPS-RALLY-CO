@@ -69,6 +69,12 @@
   <div id="thisRoute" hidden>
     <input id="routeName" type="text" maxlength="80" placeholder="Name this route (optional)" autocomplete="off" hidden>
     <div id="routeInfo"></div>
+    <div id="apprBox" hidden>
+      <h3 class="sub">Getting there</h3>
+      <div id="apprInfo" class="fine"></div>
+      <div class="seg" id="apprMode"><button data-m="fastest">⚡ Fastest</button><button data-m="shortest">📏 Shortest</button></div>
+      <div class="row"><button id="apprEdit" class="pill ghost">✎ Change the way there</button><button id="apprFrom" class="pill ghost">↻ From where I am now</button></div>
+    </div>
     <h3 class="sub" id="vehHead">Vehicle</h3>
     <div class="seg" id="vehRow" hidden><button data-v="car">🚗 Car</button><button data-v="bike">🚲 Bike — any direction</button></div>
     <p id="bikeNote" class="fine" hidden>🚲 Bike mode ignores one-way streets and takes the shortest way, including paths and parks. Riding against traffic can be dangerous and isn't allowed everywhere — ride with care, or walk your bike where you must.</p>
@@ -138,6 +144,12 @@
   <button id="editUndo" class="pill ghost">Undo</button>
   <button id="editDone" class="pill">Done</button>
   <button id="editCancel" class="pill ghost">Cancel</button>
+</div>
+
+<!-- editing the way to the start -->
+<div id="apprBar" hidden>
+  <div class="lb-txt"><b>Getting there</b><small>Tap the map where the way should pass · drag to move · tap a point to remove</small></div>
+  <div class="rv-actions"><button id="apprUndo" class="pill ghost">↶ Undo</button><button id="apprDone" class="pill go">Done</button></div>
 </div>
 
 <!-- review the calls on the map -->

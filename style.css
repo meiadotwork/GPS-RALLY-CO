@@ -528,3 +528,12 @@ body.skin-term #redTimer.last { border-color: var(--warn); }
 #timerBtn small { font: 900 12px/1 system-ui, sans-serif; letter-spacing: 2px; }
 #timerBtn b { font-size: 26px; margin-top: 4px; }
 body.skin-term #timerBtn small, body.skin-term #timerBtn b { font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
+
+/* getting there: editing the way to the start */
+#apprBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 10px; }
+#apprBar .lb-txt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+#apprBar .lb-txt small { color: var(--dim); }
+#apprBox .seg { margin-top: 8px; }
+body.skin-term #apprBar { background: #000; border: 2px solid var(--t-dim); border-radius: 0; }
+body.appredit #timerBtn { display: none; }
+body.appredit #toast { bottom: calc(160px + var(--safe-b)); }

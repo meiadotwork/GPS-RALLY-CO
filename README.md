@@ -284,6 +284,14 @@ The map and the route line are tinted to match. Anyone who had the retired Arcad
 
 ## 🚗 Liaison: getting to the start
 
+**You see and choose the way there before you drive.** As soon as you open a circuit or stage that's more than 150 m away, the way from you to its start is planned and drawn **dotted** on the map, and the route chip shows "+1.2 km to get there". On the route page, **Getting there** has:
+- **⚡ Fastest / 📏 Shortest**
+- **✎ Change the way there**: tap the map where the way should pass (each point slots in where it fits), drag a point to move it, tap a point to remove it, with ↶ Undo
+- **↻ From where I am now**, to re-plan from your current position
+
+**Start** then drives exactly that way. If you've moved since, it's re-planned from where you are, through your points.
+
+
 Press **Start** more than **150 m** from the route's start (a circuit's start/finish line) and the app **guides you there first**. This is the **liaison**, as in rallying: normal turn-by-turn calls and a dashed outline of the circuit on the map, but **no clock**. The screen shows "LIAISON — to the start of … · no timing" and the distance to the start.
 
 When you get **within about 45 m of the start**, the real route takes over: 3-2-1 GO (or time attack's flying start), then laps and timing as usual. **Stop** during the liaison puts your route back as it was. Race again from the finish of an A-to-B stage guides you back to its start. Simulation always starts on the line.
