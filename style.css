@@ -413,17 +413,20 @@ body.reviewing #timerBtn { display: none; }
 
 /* ============ TERMINAL — black & red CRT, like Criminal Terminal ============ */
 body.skin-term {
-  --bg: #050000; --panel: rgba(10, 1, 1, .94); --ink: #ff3b30; --dim: #a3231d; --accent: #ff3b30; --go: #ff3b30; --warn: #ffb642;
-  --line: #6e1410; --route: #ff2b22; --phos: #ff3b30; --phos-dark: #3d0907;
+  /* phosphor colour (Settings → Terminal colour sets these; red by default). The black always stays. */
+  --t: #ff3b30; --t-rgb: 255, 59, 48; --t-hi: #ff6a5e; --t-hi-rgb: 255, 106, 94; --t-dim: #a3231d; --t-line: #6e1410;
+  --t-mid-rgb: 110, 20, 16; --t-dark: #3d0907; --t-dark-rgb: 61, 9, 7; --warn: #ffb642; --w-rgb: 255, 182, 66;
+  --bg: #050505; --panel: rgba(6, 6, 6, .94); --ink: var(--t); --dim: var(--t-dim); --accent: var(--t); --go: var(--t);
+  --line: var(--t-line); --route: var(--t); --phos: var(--t); --phos-dark: var(--t-dark);
   font-family: "Courier New", Courier, monospace;
-  background: radial-gradient(ellipse at center, #120202 0%, #050000 78%);
-  text-shadow: 0 0 2px rgba(255, 59, 48, .5), 0 0 6px rgba(255, 59, 48, .18);
+  background: radial-gradient(ellipse at center, rgba(var(--t-rgb), .07) 0%, #050505 78%);
+  text-shadow: 0 0 2px rgba(var(--t-rgb), .5), 0 0 6px rgba(var(--t-rgb), .18);
 }
 /* fine scanlines + screen vignette, over everything (taps go through) */
 body.skin-term::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2000;
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px); opacity: .55; }
 body.skin-term::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 2001;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, .55) 100%), radial-gradient(ellipse 90% 60% at 50% 40%, rgba(255, 59, 48, .04), transparent 70%); }
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, .55) 100%), radial-gradient(ellipse 90% 60% at 50% 40%, rgba(var(--t-rgb), .04), transparent 70%); }
 body.skin-term #notepanel { animation: termflick 8s infinite; }
 @keyframes termflick { 0%, 96%, 100% { opacity: 1; } 97% { opacity: .94; } 98% { opacity: 1; } 99% { opacity: .97; } }
 @media (prefers-reduced-motion: reduce) { body.skin-term #notepanel { animation: none; } }
@@ -433,10 +436,10 @@ body.skin-term button, body.skin-term input, body.skin-term select { font-family
 body.skin-term #notepanel, body.skin-term #bar, body.skin-term #routeChip, body.skin-term #reviewBar, body.skin-term #recBar,
 body.skin-term #editBar, body.skin-term #drawBar, body.skin-term .sheet, body.skin-term #redTimer {
   border: 1px solid var(--dim); border-radius: 2px;
-  background: linear-gradient(180deg, rgba(110, 20, 16, .16), rgba(5, 0, 0, .94));
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(61, 9, 7, .6), 0 0 0 1px rgba(61, 9, 7, .6); }
-body.skin-term .sheet { background: #070101; border-width: 1px 0 0; }
-body.skin-term .sheet h2 { letter-spacing: 3px; text-transform: uppercase; font-size: 16px; text-shadow: 0 0 6px rgba(255, 59, 48, .6); }
+  background: linear-gradient(180deg, rgba(var(--t-mid-rgb), .16), rgba(5, 5, 5, .94));
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(var(--t-dark-rgb), .6), 0 0 0 1px rgba(var(--t-dark-rgb), .6); }
+body.skin-term .sheet { background: #070707; border-width: 1px 0 0; }
+body.skin-term .sheet h2 { letter-spacing: 3px; text-transform: uppercase; font-size: 16px; text-shadow: 0 0 6px rgba(var(--t-rgb), .6); }
 body.skin-term .sheet h2::before, body.skin-term h3.sub::before { content: "▓ "; }
 body.skin-term h3.sub { letter-spacing: 3px; color: var(--ink); border-bottom: 1px solid var(--phos-dark); padding-bottom: 4px; }
 body.skin-term .sheet label { color: var(--dim); letter-spacing: 1px; text-transform: uppercase; font-size: 12px; }
@@ -444,41 +447,49 @@ body.skin-term .fine, body.skin-term small { color: var(--dim); }
 
 /* the call */
 body.skin-term #noteBig { font-family: "Courier New", Courier, monospace; font-weight: 900; letter-spacing: 1px; color: var(--ink);
-  text-shadow: 0 0 4px rgba(255, 59, 48, .8), 0 0 16px rgba(255, 59, 48, .35); }
-body.skin-term #noteDist { font-family: "Courier New", Courier, monospace; color: #ff6a5e; text-shadow: 0 0 6px rgba(255, 106, 94, .6); }
-body.skin-term #noteBig.caution { color: var(--warn); text-shadow: 0 0 6px rgba(255, 182, 66, .6); }
+  text-shadow: 0 0 4px rgba(var(--t-rgb), .8), 0 0 16px rgba(var(--t-rgb), .35); }
+body.skin-term #noteDist { font-family: "Courier New", Courier, monospace; color: var(--t-hi); text-shadow: 0 0 6px rgba(var(--t-hi-rgb), .6); }
+body.skin-term #noteBig.caution { color: var(--warn); text-shadow: 0 0 6px rgba(var(--w-rgb), .6); }
 body.skin-term #noteNext, body.skin-term #lastCall { color: var(--dim); letter-spacing: 1px; }
 body.skin-term .np-stats { border-top: 1px solid var(--phos-dark); }
 body.skin-term #raceClock { color: var(--ink); background: transparent; font-family: "Courier New", Courier, monospace; }
-body.skin-term #glyph path { stroke: var(--ink); filter: drop-shadow(0 0 4px rgba(255, 59, 48, .7)); }
+body.skin-term #glyph path { stroke: var(--ink); filter: drop-shadow(0 0 4px rgba(var(--t-rgb), .7)); }
 body.skin-term #glyph text { fill: var(--ink); }
-body.skin-term #speed { color: var(--ink); font-family: "Courier New", Courier, monospace; text-shadow: 0 0 6px rgba(255, 59, 48, .6); }
+body.skin-term #speed { color: var(--ink); font-family: "Courier New", Courier, monospace; text-shadow: 0 0 6px rgba(var(--t-rgb), .6); }
 body.skin-term #chipDist, body.skin-term #chipName { color: var(--ink); }
 
 /* buttons: outlined terminal keys; the main one is solid phosphor with black text */
 body.skin-term .pill, body.skin-term .round, body.skin-term .fix-btn, body.skin-term .chips button, body.skin-term .add-col button {
-  border: 1px solid var(--dim); border-radius: 2px; background: rgba(110, 20, 16, .12); color: var(--ink);
+  border: 1px solid var(--dim); border-radius: 2px; background: rgba(var(--t-mid-rgb), .12); color: var(--ink);
   text-transform: uppercase; letter-spacing: 1px; box-shadow: none; }
-body.skin-term .pill.go, body.skin-term #btnCompass { background: var(--ink); color: #0a0000; border-color: var(--ink); text-shadow: none;
-  box-shadow: 0 0 10px rgba(255, 59, 48, .35); }
-body.skin-term .pill.go.stop { background: #0a0000; color: var(--ink); border: 2px solid var(--ink); }
+body.skin-term .pill.go, body.skin-term #btnCompass { background: var(--ink); color: #050505; border-color: var(--ink); text-shadow: none;
+  box-shadow: 0 0 10px rgba(var(--t-rgb), .35); }
+body.skin-term .pill.go.stop { background: #050505; color: var(--ink); border: 2px solid var(--ink); }
 body.skin-term .pill.danger { border-color: var(--warn); color: var(--warn); }
 body.skin-term .seg { border: 1px solid var(--dim); border-radius: 2px; }
-body.skin-term .seg button.on, body.skin-term .chips button.on { background: var(--ink); color: #0a0000; text-shadow: none; }
+body.skin-term .seg button.on, body.skin-term .chips button.on { background: var(--ink); color: #050505; text-shadow: none; }
 body.skin-term input[type="text"], body.skin-term input[type="number"], body.skin-term select, body.skin-term #searchInput {
   background: #000; border: 1px solid var(--dim); border-radius: 2px; color: var(--ink); }
 body.skin-term input[type="range"] { accent-color: var(--ink); }
 
 /* ⏱ timer */
-body.skin-term #timerBtn { border-radius: 2px; border: 2px solid var(--ink); background: #0a0000; color: var(--ink);
-  box-shadow: 0 0 12px rgba(255, 59, 48, .45); text-shadow: 0 0 4px rgba(255, 59, 48, .7); }
-body.skin-term #redNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 6px rgba(255, 59, 48, .8), 0 0 20px rgba(255, 59, 48, .35); }
+body.skin-term #timerBtn { border-radius: 2px; border: 2px solid var(--ink); background: #050505; color: var(--ink);
+  box-shadow: 0 0 12px rgba(var(--t-rgb), .45); text-shadow: 0 0 4px rgba(var(--t-rgb), .7); }
+body.skin-term #redNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 6px rgba(var(--t-rgb), .8), 0 0 20px rgba(var(--t-rgb), .35); }
 body.skin-term #redTimer.last { border-color: var(--warn); }
-body.skin-term #redTimer.last #redNum { color: var(--warn); text-shadow: 0 0 8px rgba(255, 182, 66, .7); }
+body.skin-term #redTimer.last #redNum { color: var(--warn); text-shadow: 0 0 8px rgba(var(--w-rgb), .7); }
 
 /* map: dark, tinted red */
-body.skin-term .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.42) contrast(1.35) sepia(1) hue-rotate(-40deg) saturate(2.4) !important; }
-body.skin-term .leaflet-container { background: #050000; }
-body.skin-term #toast { border: 1px solid var(--dim); border-radius: 2px; background: #0a0000; color: var(--ink); }
-body.skin-term #countdown #cdNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 20px rgba(255, 59, 48, .6); }
-body.skin-term #cdNum.go { color: #ffb642; }
+body.skin-term .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.42) contrast(1.35) sepia(1) hue-rotate(var(--t-hue, -40deg)) saturate(2.4) !important; }
+body.skin-term .leaflet-container { background: #050505; }
+body.skin-term #toast { border: 1px solid var(--dim); border-radius: 2px; background: #050505; color: var(--ink); }
+body.skin-term #countdown #cdNum { font-family: "Courier New", Courier, monospace; color: var(--ink); text-shadow: 0 0 20px rgba(var(--t-rgb), .6); }
+body.skin-term #cdNum.go { color: var(--warn); }
+
+/* terminal colour picker (Settings → Look) */
+.term-colors { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.term-colors button { width: 40px; height: 40px; border-radius: 2px; border: 2px solid #333; background: var(--c); box-shadow: 0 0 8px var(--c); padding: 0; }
+.term-colors button.on { border-color: #fff; outline: 2px solid var(--c); outline-offset: 2px; }
+.term-colors label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--dim); font-size: 13px; }
+#termCustom { width: 44px; height: 40px; padding: 0; border: 2px solid #333; border-radius: 2px; background: #000; }
+#termColors { display: contents; }

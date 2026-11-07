@@ -18,7 +18,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
@@ -726,9 +726,32 @@ function bindSeg(id, key) {
 bindSeg('setAhead', 'callAhead');
 bindSeg('setSkin', 'skin');
 $('setSkin').addEventListener('click', () => { applySkin(); if (S.route) drawRoute(false); });
+// Terminal colour: one phosphor colour, every shade derived from it; the black background never changes.
+const TERM_COLORS = [['#ff3b30', 'Red'], ['#39ff74', 'Green'], ['#ffb642', 'Amber'], ['#4da3ff', 'Blue'], ['#3ff7ff', 'Cyan'], ['#ff4fd8', 'Pink'], ['#b98cff', 'Purple'], ['#f2f2f2', 'White']];
+function termVars(hex) {
+  const n = parseInt(String(hex).replace('#', '').padEnd(6, '0').slice(0, 6), 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255];
+  const mix = (to, k) => c.map((v, i) => Math.round(v + (to[i] - v) * k));
+  const css = (a) => `rgb(${a.join(',')})`, rgb = (a) => a.join(', ');
+  const [r, g, b] = c.map((v) => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0; if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360;
+  const warn = (h > 20 && h < 70) || d < 0.15 ? [255, 59, 48] : [255, 182, 66]; // warnings stay visible: red on amber/white, amber otherwise
+  const hi = mix([255, 255, 255], 0.22), dim = mix([0, 0, 0], 0.36), line = mix([0, 0, 0], 0.57), mid = mix([0, 0, 0], 0.57), dark = mix([0, 0, 0], 0.76);
+  return { '--t': css(c), '--t-rgb': rgb(c), '--t-hi': css(hi), '--t-hi-rgb': rgb(hi), '--t-dim': css(dim), '--t-line': css(line),
+    '--t-mid-rgb': rgb(mid), '--t-dark': css(dark), '--t-dark-rgb': rgb(dark), '--warn': css(warn), '--w-rgb': rgb(warn),
+    '--t-hue': `${Math.round(h - 40)}deg` }; // map tint: sepia starts near 40°, rotate it to the chosen hue
+}
+function applyTermColor() {
+  const vars = termVars(settings.termColor || '#ff3b30'), on = settings.skin === 'term';
+  for (const [k, v] of Object.entries(vars)) { if (on) document.body.style.setProperty(k, v); else document.body.style.removeProperty(k); }
+  $('termColorRow').hidden = !on;
+  $('termColors').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c.toLowerCase() === String(settings.termColor).toLowerCase()));
+  $('termCustom').value = /^#[0-9a-f]{6}$/i.test(settings.termColor) ? settings.termColor : '#ff3b30';
+}
+function setTermColor(c) { settings.termColor = c; saveSettings(); applyTermColor(); if (S.route) drawRoute(false); }
 function applySkin() {
   document.body.className = document.body.className.replace(/\bskin-\w+/g, '').trim();
   if (settings.skin && settings.skin !== 'classic') document.body.classList.add('skin-' + settings.skin);
+  applyTermColor();
 }
 applySkin();
 bindSeg('setUnits', 'units');
@@ -2092,3 +2115,9 @@ $('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') t
 $('setRedSecs').value = redSecs();
 $('setRedSecs').onchange = (e) => { settings.redSecs = Math.max(5, Math.min(600, Math.round(+e.target.value || 70))); e.target.value = settings.redSecs; saveSettings(); showTimerBtn(); toast(`⏱ Timer: ${settings.redSecs} seconds`); };
 showTimerBtn();
+
+// terminal colour picker
+$('termColors').innerHTML = TERM_COLORS.map(([c, n]) => `<button data-c="${c}" style="--c:${c}" title="${n}" aria-label="${n}"></button>`).join('');
+$('termColors').addEventListener('click', (e) => { const c = e.target.closest('button')?.dataset.c; if (c) setTermColor(c); });
+$('termCustom').oninput = (e) => setTermColor(e.target.value);
+applyTermColor();
