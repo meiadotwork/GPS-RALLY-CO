@@ -824,7 +824,7 @@ function glyph(n) {
   if (n.kind === 'camera') return (g.innerHTML = '<path d="M16 36 H84 V80 H16 Z M36 36 L42 24 H58 L64 36 M62 58 A12 12 0 1 1 38 58 A12 12 0 1 1 62 58"/>');
   if (n.kind === 'recce' || n.kind === 'feature') return (g.innerHTML = '<text x="50" y="76" text-anchor="middle" font-size="72">!</text>');
   if (n.chicane) return (g.innerHTML = `<path d="M50 94 V74 L${n.dir === 'right' ? 72 : 28} 54 L${n.dir === 'right' ? 28 : 72} 32 L50 12"/>`);
-  if (n.shape === 'roundabout') return (g.innerHTML = '<path d="M50 92 V68 M50 68 A16 16 0 1 1 66 52 L84 40 M84 40 l-12 0 M84 40 l-3 11"/>');
+  if (n.shape === 'roundabout') return (g.innerHTML = '<path d="M50 92 V68 M50 68 A16 16 0 1 1 66 52 L84 40"/>');
   const R = { H: 15, 1: 10, 2: 13, 3: 17, 4: 22, 5: 28, 6: 34, F: 44 };
   let r, th;
   if (n.kind === 'junction' || n.shape) {
@@ -832,14 +832,21 @@ function glyph(n) {
     th = n.shape === 'keep' ? 20 : Math.max(25, Math.min(n.angle, 180));
   }
   else { r = R[n.grade]; th = Math.max(25, Math.min(n.angle, 180)); }
-  const right = n.dir === 'right', x0 = 50 + (right ? -1 : 1) * Math.max(12, Math.min(r, 20)), y0 = 60; // keep the arrow centred
-  const cx = right ? x0 + r : x0 - r;
-  const phi = (right ? 180 + th : -th) * Math.PI / 180;
-  const ex = cx + r * Math.cos(phi), ey = y0 + r * Math.sin(phi);
-  const h = (-90 + (right ? th : -th)) * Math.PI / 180;
-  const tx = ex + 12 * Math.cos(h), ty = ey + 12 * Math.sin(h);
-  const ah = (a) => `M${tx.toFixed(1)} ${ty.toFixed(1)} l${(14 * Math.cos(h + a)).toFixed(1)} ${(14 * Math.sin(h + a)).toFixed(1)}`;
-  g.innerHTML = `<path d="M${x0} 94 V${y0} A${r} ${r} 0 ${th > 180 ? 1 : 0} ${right ? 1 : 0} ${ex.toFixed(1)} ${ey.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)} ${ah(2.5)} ${ah(-2.5)}"/>`;
+  g.innerHTML = `<path d="${turnPath(n.dir === 'right', th, r)}"/>`;
+}
+// The turn's shape alone, no arrowhead: straight in, the curve (tight for a square or hairpin, wide for a 6),
+// a short straight out — scaled and centred to fill the box, so even a square turn reads at a glance.
+function turnPath(right, th, r, approach = 34, exit = 16) {
+  const s = right ? 1 : -1, pts = [[0, 0], [0, -approach]];
+  let x = 0, y = -approach, h = -90;
+  const steps = Math.max(4, Math.round(th / 6)), dth = s * th / steps, chord = 2 * r * Math.sin(Math.abs(dth) * Math.PI / 360);
+  for (let i = 0; i < steps; i++) { const mid = (h + dth / 2) * Math.PI / 180; x += chord * Math.cos(mid); y += chord * Math.sin(mid); h += dth; pts.push([x, y]); }
+  pts.push([x + exit * Math.cos(h * Math.PI / 180), y + exit * Math.sin(h * Math.PI / 180)]);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const [px, py] of pts) { x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py); }
+  const pad = 10, k = Math.min((100 - 2 * pad) / (x1 - x0 || 1), (100 - 2 * pad) / (y1 - y0 || 1), 2.2);
+  const ox = 50 - (x0 + x1) / 2 * k, oy = 50 - (y0 + y1) / 2 * k;
+  return 'M' + pts.map(([px, py]) => `${(ox + px * k).toFixed(1)} ${(oy + py * k).toFixed(1)}`).join(' L');
 }
 
 // ---------- navigation ----------
