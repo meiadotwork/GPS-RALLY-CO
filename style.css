@@ -523,3 +523,8 @@ body.skin-term #noteDist { color: var(--t); }
 body.skin-term .term-colors button { box-shadow: none; border-radius: 0; }
 body.skin-term .leaflet-container { background: #000; }
 body.skin-term #redTimer.last { border-color: var(--warn); }
+
+/* timer button: text only, no emoji */
+#timerBtn small { font: 900 12px/1 system-ui, sans-serif; letter-spacing: 2px; }
+#timerBtn b { font-size: 26px; margin-top: 4px; }
+body.skin-term #timerBtn small, body.skin-term #timerBtn b { font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }

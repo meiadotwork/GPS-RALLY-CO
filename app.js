@@ -2119,7 +2119,7 @@ $('redCancel').onclick = (e) => { e.stopPropagation(); timerStop(); };
 bindSeg('setRed', 'redTimer');
 $('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') timerStop(); showTimerBtn(); });
 $('setRedSecs').value = redSecs();
-$('setRedSecs').onchange = (e) => { settings.redSecs = Math.max(5, Math.min(600, Math.round(+e.target.value || 70))); e.target.value = settings.redSecs; saveSettings(); showTimerBtn(); toast(`⏱ Timer: ${settings.redSecs} seconds`); };
+$('setRedSecs').onchange = (e) => { settings.redSecs = Math.max(5, Math.min(600, Math.round(+e.target.value || 70))); e.target.value = settings.redSecs; saveSettings(); showTimerBtn(); toast(`Red light timer: ${settings.redSecs} seconds`); };
 showTimerBtn();
 
 // terminal colour picker

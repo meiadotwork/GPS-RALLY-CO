@@ -32,7 +32,7 @@
 </section>
 
 <button id="mapBack" class="pill go" hidden>↩ Back to driving</button>
-<button id="timerBtn" hidden aria-label="Start the red light countdown">⏱<b id="timerBtnSecs">70</b></button>
+<button id="timerBtn" hidden aria-label="Start the red light countdown"><small>RED</small><b id="timerBtnSecs">70</b></button>
 <div id="redTimer" hidden>
   <div id="redNum">0</div>
   <div class="red-actions">
@@ -249,13 +249,13 @@
     <button data-v="off">Off</button><button data-v="on">Guess them</button>
   </div>
   <p class="fine">Off by default: elevation data is too rough for real roads. Add your own road notes instead: <b>＋ Note</b> while driving (crest, jump, dip, bumps, gravel, narrows…), or in Review → ＋ Add at ⊕ → Words only. They’re called every time you pass.</p>
-  <label>⏱ Red light timer</label>
+  <label>Red light timer</label>
   <div class="seg" id="setRed">
     <button data-v="on">Show button</button><button data-v="off">Hide</button>
   </div>
   <label>Countdown (seconds)</label>
   <input id="setRedSecs" type="number" min="5" max="600" step="1" inputmode="numeric">
-  <p class="fine">Tap ⏱ when a light turns red and it counts down this many seconds. One double beep at 10 seconds left. −5 / +5 adjust it, and it closes when you drive off.</p>
+  <p class="fine">Tap the RED button when a light turns red and it counts down this many seconds. One double beep at 10 seconds left. −5 / +5 adjust it, and it closes when you drive off.</p>
   <label>Speed cameras</label>
   <div class="seg" id="setCams">
     <button data-v="off">Off</button><button data-v="on">Call them</button>

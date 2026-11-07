@@ -260,7 +260,7 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 
 ## ⏱ Red light timer
 
-A big red **⏱ 70** button on the right of the screen, both while driving and on the map. **Tap it when a light turns red** and it counts down your time in big numbers.
+A big **RED 70** button on the right of the screen, both while driving and on the map. **Tap it when a light turns red** and it counts down your time in big numbers.
 - **One double beep at 10 seconds left**, and the timer turns yellow. At zero it shows **GREEN** for a few seconds, then closes.
 - **−5 / +5** adjust the countdown, and **✕ Close** stops it. It also closes by itself when you drive off.
 - **Settings → Countdown (seconds)** sets your time (70 s by default, 5–600). **Settings → ⏱ Red light timer** shows or hides the button.
