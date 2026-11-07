@@ -11,7 +11,8 @@ import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShort
 const $ = (id) => document.getElementById(id);
 const OSRM = 'https://router.project-osrm.org/route/v1/driving/';
 // 🚲 bike: OpenStreetMap's "foot" router ignores one-way streets and uses paths and parks — shortest way, any direction
-const ROUTERS = { car: OSRM, bike: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/' };
+// 🚶 on foot: the same walking network — footpaths, parks, pedestrian streets, stairs — at walking pace
+const ROUTERS = { car: OSRM, bike: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/', foot: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/' };
 let VEHICLE = 'car';
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
 const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
@@ -151,7 +152,7 @@ const geomPts = (r) => r.geometry.coordinates.map(([lo, la]) => [la, lo]);
 // Fetch honouring the "avoid tolls" filter. If the server can't exclude tolls, fetch normally and
 // put the routes with the fewest toll points first.
 async function fetchFiltered(coords, startBearing, alternatives, noToll) {
-  if (!noToll || VEHICLE === 'bike') return osrmFetch(coords, startBearing, alternatives); // no tolls on a bike
+  if (!noToll || VEHICLE !== 'car') return osrmFetch(coords, startBearing, alternatives); // no tolls on a bike
   try { return await osrmFetch(coords, startBearing, alternatives, true); }
   catch {
     const j = await osrmFetch(coords, startBearing, alternatives || coords.length === 2);
@@ -313,7 +314,7 @@ async function planMode(base, mode, noToll = false) {
 function setRoute(r, { fit = true } = {}) {
   if (!r.spec?.parking) { S.huntCircle?.remove(); S.huntCircle = null; S.hunt = null; }
   const gen = generatePaceNotes(r.points, {
-    steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike',
+    steps: r.steps, loop: !!r.loop, flats: settings.flats !== 'off' && r.spec?.vehicle !== 'foot', reverse: settings.scale === 'rev', streets: settings.streets !== 'off', bike: r.spec?.vehicle === 'bike', foot: r.spec?.vehicle === 'foot',
     elevation: settings.crests === 'on' ? r.elevation : undefined, recce, // crests & dips from elevation data: off unless asked for fixes, gradeOffset: +settings.cal || 0, cameras: settings.cams === 'on' ? r.cameras : undefined,
   });
   S.route = { ...r, ...gen };
@@ -390,7 +391,7 @@ function fmtDur(sec) {
 function paintSummary() {
   const R = S.route, corners = R.notes.filter((n) => n.kind === 'corner').length;
   const cams = R.notes.filter((n) => n.cams).length;
-  const dist = `${R.spec?.vehicle === 'bike' ? '🚲 ' : ''}${R.spec?.recorded ? '⏺ ' : ''}${fmtDist(R.total)}${R.loop ? ' lap' : ''}`;
+  const dist = `${R.spec?.vehicle === 'bike' ? '🚲 ' : R.spec?.vehicle === 'foot' ? '🚶 ' : ''}${R.spec?.recorded ? '⏺ ' : ''}${fmtDist(R.total)}${R.loop ? ' lap' : ''}`;
   const laps = R.loop ? settings.laps : 1;
   const parts = R.loop && laps
     ? [`${laps} lap${laps > 1 ? 's' : ''} = ${fmtDist(R.total * laps)}`, `~${fmtDur(routeSeconds() * laps)}`, `${R.notes.length} note${R.notes.length === 1 ? '' : 's'}`]
@@ -462,7 +463,7 @@ async function buildRoute(spec, loop = S.loop, opts) {
     // on a bike "fastest" means the shortest way — any direction
     // no route type chosen = EXACT: through your points, in your order, nothing optimised or added.
     // The types (Fastest, Shortest, Smooth, Explore) only kick in when you pick one.
-    const mode = spec.vehicle === 'bike' && spec.mode === 'fastest' ? 'shortest' : spec.mode || 'exact', noToll = !!spec.noToll;
+    const mode = (spec.vehicle === 'bike' || spec.vehicle === 'foot') && spec.mode === 'fastest' ? 'shortest' : spec.mode || 'exact', noToll = !!spec.noToll;
     const roundOn = mode !== 'exact' && loop && spec.via.length === 2 && settings.round !== 'off';
     const picksOwn = roundOn || mode === 'smooth' || mode === 'explore' || (mode === 'shortest' && (loop || spec.via.length > 2));
     if (picksOwn && !spec.planned) {
@@ -489,7 +490,7 @@ async function buildRoute(spec, loop = S.loop, opts) {
     }
     {
       const b = spec.base || spec.via;
-      const key = b.map((p) => p.map((x) => x.toFixed(4)).join()).join('>') + (loop ? '|loop' : '') + (noToll ? '|nt' : '') + (spec.vehicle === 'bike' ? '|bike' : '');
+      const key = b.map((p) => p.map((x) => x.toFixed(4)).join()).join('>') + (loop ? '|loop' : '') + (noToll ? '|nt' : '') + (spec.vehicle && spec.vehicle !== 'car' ? '|' + spec.vehicle : '');
       if (S.modeKey !== key) { S.modeKey = key; S.modeInfo = {}; }
       S.modeInfo[mode] = { dist: r.distance, dur: r.duration, info: r.info };
     }
@@ -1505,12 +1506,12 @@ drawPlaces(); paintPlaceChips();
 const MODES = { exact: '📍 Exactly my way', fastest: '⚡ Fastest', shortest: '📏 Shortest', smooth: '〰️ Smooth', explore: '🎲 Explore' };
 function paintModes() {
   const sp = S.route?.spec, ok = sp && !sp.raw;
-  $('vehRow').hidden = !ok; $('vehHead').hidden = !ok; $('bikeNote').hidden = !(ok && sp.vehicle === 'bike');
+  $('vehRow').hidden = !ok; $('vehHead').hidden = !ok; $('bikeNote').hidden = !(ok && sp.vehicle === 'bike'); $('footNote').hidden = !(ok && sp.vehicle === 'foot');
   if (ok) $('vehRow').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (sp.vehicle || 'car')));
   $('filterRow').hidden = !ok; $('typeHead').hidden = !ok; $('filterHead').hidden = !ok;
   $('modeRow').hidden = !ok;
   if (!ok) return;
-  const bike = sp.vehicle === 'bike';
+  const bike = sp.vehicle === 'bike' || sp.vehicle === 'foot'; // both always take the shortest way
   let cur = sp.mode === 'notoll' ? 'fastest' : sp.mode || 'exact'; if (bike && cur === 'fastest') cur = 'shortest';
   const exact = cur === 'exact';
   const info = S.modeInfo || {};
@@ -1946,10 +1947,11 @@ $('vehRow').addEventListener('click', async (e) => {
   settings.vehicle = v; saveSettings();
   const sp = S.route.spec; if ((sp.vehicle || 'car') === v) return paintSummary();
   S.busyMode = true;
-  toast(v === 'bike' ? '🚲 Shortest way for a bike — any direction…' : '🚗 Car route…', 8000);
+  const ic = { car: '🚗', bike: '🚲', foot: '🚶' }[v];
+  toast(v === 'bike' ? '🚲 Shortest way for a bike — any direction…' : v === 'foot' ? '🚶 Walking route — paths, parks, any direction…' : '🚗 Car route…', 8000);
   try {
     await buildRoute({ ...sp, via: sp.base || sp.via, planned: false, vehicle: v, mode: sp.mode }, S.route.loop, { fit: false });
-    toast(`${v === 'bike' ? '🚲' : '🚗'} ${fmtDist(S.route.total)}${S.route.loop ? ' lap' : ''} · ~${fmtDur(routeSeconds())}`);
+    toast(`${ic} ${fmtDist(S.route.total)}${S.route.loop ? ' lap' : ''} · ~${fmtDur(routeSeconds())}`);
   } catch (err) { toast('Routing failed: ' + err.message); }
   S.busyMode = false;
 });

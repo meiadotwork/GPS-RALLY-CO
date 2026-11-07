@@ -357,10 +357,21 @@ function junctionNotes(samples, steps, corners, opt = {}) {
 // Some crews run the scale the other way round (1 = fastest).
 export const showGrade = (g, o = {}) => (o.reverse && typeof g === 'number' ? 7 - g : g);
 
+// Walking words instead of rally grades: "turn left", "slight right", "sharp left", "keep left".
+function footWords(n) {
+  const g = n.grade, sh = n.shape;
+  if (sh === 'roundabout' || !n.dir) return null;
+  const w = sh === 'keep' ? 'keep' : sh === 'hairpin' || sh === 'acute' || g === 'H' || g === 1 ? 'sharp'
+    : sh === 'square' || g === 2 || g === 3 || (sh === 'graded' && (n.angle || 0) >= 50) || (n.kind === 'corner' && (n.angle || 0) >= 60) ? 'turn' : 'slight';
+  const onto = (n.text || '').match(/, (onto|toward) .*$/)?.[0] || '';
+  return `${w} ${n.dir}${onto}`;
+}
+
 export function noteText(n, o = {}) {
   const m = n.mods || [];
   let core;
-  if (n.text) core = n.text;
+  if (o.foot && (n.kind === 'corner' || n.kind === 'junction') && footWords(n)) core = footWords(n);
+  else if (n.text) core = n.text;
   else if (n.chicane) core = `chicane ${n.chicane}`;
   else if (n.shape) core = `${n.shape} ${n.dir}` + (m.includes('over crest') ? ' over crest' : '');
   else {
@@ -584,7 +595,7 @@ function decorate(notes, samples, kappa, opt) {
 
   // brake / hard brake: speed you'd be carrying in (no early braking) vs. what the corner allows
   const vGrip = speedProfile(samples, kappa, 100 / 3.6, { forwardOnly: true });
-  for (const n of opt.bike ? [] : notes) { // no brake calls on a bike
+  for (const n of opt.bike || opt.foot ? [] : notes) { // no brake calls on a bike or on foot
     if (n.kind !== 'corner' || n.grade === 'F' || n.mods.some((m) => m.includes('caution'))) continue;
     const i0 = Math.max(0, Math.round(n.sStart / step)), i1 = Math.min(vGrip.length - 1, Math.round(n.sEnd / step));
     const vIn = vGrip[Math.max(0, i0 - 2)];
@@ -629,8 +640,10 @@ function decorate(notes, samples, kappa, opt) {
       if (['vertical', 'camera', 'feature'].includes(n.kind) && segLen([fx.lat, fx.lon], [n.lat, n.lon]) < 25) notes.splice(i, 1);
     }
   }
+  // on foot: only real turns are called (paths wiggle; a "5" or a flat bend means nothing when walking)
+  if (opt.foot) notes = notes.filter((n) => !(n.kind === 'corner' && !n.fixed && !n.added && !n.extra?.length && !n.recce && !n.shape && ['F', 4, 5, 6].includes(n.grade)));
   notes.sort((a, b) => a.sStart - b.sStart);
-  return chicanes(notes);
+  return opt.foot ? notes : chicanes(notes);
 }
 
 // Quick direction changes: two or more short alternating bends linked "into".

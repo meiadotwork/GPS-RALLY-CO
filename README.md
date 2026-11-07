@@ -235,6 +235,13 @@ Pick a destination: **🅿️ Find parking here** on a place, on a long-press, o
 
 A phone records about one fix per second, so at speed tight corners are rounded a little. Record twisty sections at a moderate pace, and correct calls in 🔍 Review.
 
+## 🚶 On foot
+
+**Route page → Vehicle → 🚶 On foot** routes along OpenStreetMap's walking network: **footpaths, paths through parks, pedestrian streets and stairs**, either way along one-way streets. Times are at walking pace, and it always takes the shortest way.
+- **Plain walking calls** instead of rally grades: "**turn left**", "**slight right**", "**sharp left**", "**keep right**", with "onto …" when street names are on.
+- Only real turns are called. Gentle bends, flat/kink, chicanes and brake calls are left out, because paths wiggle and those mean nothing on foot.
+- Everything else works the same: checkpoints, laps and time attack, the leaderboard, the liaison to the start, and share links (`&foot=1`).
+
 ## 🚲 Bike mode
 
 On the route page, **Vehicle → 🚲 Bike — any direction**. It routes with OpenStreetMap's FOSSGIS "foot" router (`routing.openstreetmap.de/routed-foot`), which **ignores one-way streets** and can use paths and parks. It always takes the **shortest** way (Fastest is hidden), and there are no brake calls or toll filter. The setting sticks for new routes, and saved routes and share links remember it (`&bike=1`). The route page shows a short note, because riding against traffic can be dangerous and isn't allowed everywhere.

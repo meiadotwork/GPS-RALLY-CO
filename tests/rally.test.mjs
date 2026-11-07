@@ -622,3 +622,15 @@ test('simulator at a constant speed: exactly what you pick, 1 to 300 km/h', () =
   while (!sim.done) { const f = sim.tick(0.5); const c = sch.update(f.s, f.speed); if (c) { calls++; if (c.distToNote < 0) late++; } }
   assert.ok(calls > 3 && late === 0, `${calls} calls, ${late} late`);
 });
+
+test('on foot: plain walking calls, only real turns, no brake calls, survives a share link', () => {
+  const car = generatePaceNotes(stage.points, { steps: stage.steps });
+  const foot = generatePaceNotes(stage.points, { steps: stage.steps, foot: true, flats: false });
+  const labels = foot.notes.map((n) => n.label);
+  assert.ok(labels.every((l) => !/\b[1-6]\b|hairpin|brake|caution|flat|kink|chicane/.test(l)), labels.join(' | '));
+  assert.ok(labels.some((l) => /^(turn|sharp|slight|keep) (left|right)/.test(l)));
+  assert.ok(foot.notes.length < car.notes.length, 'gentle bends are left out on foot');
+  assert.equal(labels.at(-1), 'finish');
+  const back = hashToSpec('#' + specToHash({ via: [[40.8, -73.9], [40.81, -73.91]], vehicle: 'foot' }));
+  assert.equal(back.spec.vehicle, 'foot');
+});
