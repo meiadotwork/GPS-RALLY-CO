@@ -1,7 +1,7 @@
 // Recording a drive: turn raw GPS fixes into a clean track for pace notes.
 // Pure ES module (no DOM) so it can be tested in Node.
 
-import { segLen } from './pacenotes.js';
+import { segLen } from './pacenotes.js?v=20261107';
 
 /**
  * Keep a fix if it's accurate enough, not a jump, and far enough from the last kept one.

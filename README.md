@@ -342,3 +342,7 @@ npm test
 ```
 
 The public OSRM and Nominatim servers are demo services with fair-use limits. For real traffic, host your own instances or use a paid provider.
+
+## Always the newest version
+
+`_headers` tells browsers to check for a newer copy of every file on each visit (`Cache-Control: no-cache`, answered quickly with "not modified" when nothing changed), so a phone never keeps showing an old version after a deploy.

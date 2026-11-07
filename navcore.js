@@ -1,7 +1,7 @@
 // Live navigation core: map-matching, speed-aware call scheduling, drive simulator.
 // Pure ES module (no DOM) so it can be tested in Node.
 
-import { segLen, bearing, chainText, noteText, speedProfile } from './pacenotes.js';
+import { segLen, bearing, chainText, noteText, speedProfile } from './pacenotes.js?v=20261107';
 export { speedProfile };
 
 const DEG = Math.PI / 180;

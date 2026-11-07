@@ -1,7 +1,7 @@
 // Route clean-up helpers: find around-the-block loops / U-turn spurs, score smoothness,
 // insert a via point where it fits best. Pure ES module (no DOM, no network).
 
-import { segLen } from './pacenotes.js';
+import { segLen } from './pacenotes.js?v=20261107';
 
 function cumulative(points) {
   const c = [0];
@@ -120,7 +120,7 @@ export function distToPolyline(points, p) {
 
 // ---------- route options: shortest / no tolls / smooth / explore ----------
 
-import { offsetPoint, bearing } from './pacenotes.js';
+import { offsetPoint, bearing } from './pacenotes.js?v=20261107';
 
 /** A point part-way from a to b (t = 0..1), pushed sideways by frac × the A–B distance (+ right, − left). */
 export function lateralPoint(a, b, t, frac) {

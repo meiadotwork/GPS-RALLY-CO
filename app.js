@@ -1,12 +1,12 @@
-import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade } from './pacenotes.js';
-import { RouteTracker, CallScheduler, DriveSim } from './navcore.js';
-import { buildStage } from './sample-route.js';
-import { specToHash, hashToSpec } from './share.js';
-import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js';
-import { overpassQuery, buildGraph, planHunt } from './parking.js';
-import { finishRecording } from './record.js';
-import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js';
-import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js';
+import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade } from './pacenotes.js?v=20261107';
+import { RouteTracker, CallScheduler, DriveSim } from './navcore.js?v=20261107';
+import { buildStage } from './sample-route.js?v=20261107';
+import { specToHash, hashToSpec } from './share.js?v=20261107';
+import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js?v=20261107';
+import { overpassQuery, buildGraph, planHunt } from './parking.js?v=20261107';
+import { finishRecording } from './record.js?v=20261107';
+import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js?v=20261107';
+import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js?v=20261107';
 
 const $ = (id) => document.getElementById(id);
 const OSRM = 'https://router.project-osrm.org/route/v1/driving/';
