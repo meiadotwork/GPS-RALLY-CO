@@ -499,3 +499,27 @@ body.skin-term #cdNum.go { color: var(--warn); }
 /* pixel font everywhere in Terminal, never synthetic bold */
 body.skin-term, body.skin-term * { font-synthesis: none; }
 body.skin-term b, body.skin-term strong, body.skin-term .pill, body.skin-term #speed, body.skin-term #noteDist, body.skin-term #redNum, body.skin-term #raceClock, body.skin-term h2, body.skin-term h3 { font-weight: 400; }
+
+/* ============ TERMINAL is flat, like Criminal Terminal: pure black + one colour, pixel font.
+   No scanlines, vignette, flicker, glow or gradients — not a "vintage screen" effect. ============ */
+body.skin-term { background: #000; --bg: #000; --panel: #000; }
+body.skin-term::before, body.skin-term::after { content: none; display: none; }
+body.skin-term #notepanel { animation: none; }
+body.skin-term, body.skin-term * { text-shadow: none !important; }
+body.skin-term #glyph path, body.skin-term .leaflet-marker-icon svg, body.skin-term #me svg { filter: none !important; }
+body.skin-term #notepanel, body.skin-term #bar, body.skin-term #routeChip, body.skin-term #reviewBar, body.skin-term #recBar,
+body.skin-term #editBar, body.skin-term #drawBar, body.skin-term #redTimer {
+  background: #000; box-shadow: none; border: 2px solid var(--t-dim); border-radius: 0; }
+body.skin-term .sheet { background: #000; box-shadow: none; border: 0; border-top: 2px solid var(--t-dim); border-radius: 0; }
+body.skin-term .pill, body.skin-term .round, body.skin-term .fix-btn, body.skin-term .chips button, body.skin-term .add-col button,
+body.skin-term #timerBtn, body.skin-term #toast {
+  background: #000; border: 2px solid var(--t); border-radius: 0; box-shadow: none; color: var(--t); }
+body.skin-term .pill.go, body.skin-term #btnCompass, body.skin-term .seg button.on, body.skin-term .chips button.on { background: var(--t); color: #000; box-shadow: none; }
+body.skin-term .pill.go.stop { background: #000; color: var(--t); border: 2px solid var(--t); }
+body.skin-term .seg { border: 2px solid var(--t); border-radius: 0; }
+body.skin-term input[type="text"], body.skin-term input[type="number"], body.skin-term select, body.skin-term #searchInput { border: 2px solid var(--t); border-radius: 0; background: #000; }
+body.skin-term .np-stats, body.skin-term h3.sub { border-color: var(--t-dim); }
+body.skin-term #noteDist { color: var(--t); }
+body.skin-term .term-colors button { box-shadow: none; border-radius: 0; }
+body.skin-term .leaflet-container { background: #000; }
+body.skin-term #redTimer.last { border-color: var(--warn); }
