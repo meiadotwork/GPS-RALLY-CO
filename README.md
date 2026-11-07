@@ -274,7 +274,7 @@ By default the calls **don't say the distance to the next call** ("left 4, 200, 
 ## Looks (skins)
 
 **Settings → Look** picks the style. The app remembers your choice.
-- **▓ Terminal** (default): black and red CRT terminal, in the style of the Criminal Terminal game. It uses the same pixel font as the game, **Web437 IBM VGA 8x16** by VileR ([int10h.org](https://int10h.org/oldschool-pc-fonts/)), licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (see `fonts/LICENSE.txt`). Glowing red monospace text, fine scanlines, a screen vignette, thin phosphor borders, solid red keys with black text, and "▓" section titles.
+- **▓ Terminal** (default): flat terminal look, like the Criminal Terminal game: pure black, one colour and a pixel font, with square outlined keys, solid keys for what's selected, and "▓" section titles. No glow, scanlines or "old screen" effects.
   - **Terminal colour** (shown under Look when Terminal is on): Red (default), Green, Amber, Blue, Cyan, Pink, Purple or White, or **any colour** from the colour picker. The black background always stays. Every glow, border and shade comes from that one colour, and the map tint and route line follow it. Warnings stay amber, or switch to red when your colour is amber, orange or white, so they still stand out.
 - **LCD**: an olive stopwatch-style screen with dark digits.
 - **Tripmeter**: a black box with glowing amber digits, like a rally instrument.
