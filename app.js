@@ -639,7 +639,7 @@ $('loopToggle').onchange = async (e) => {
   catch (err) { toast('Routing failed: ' + err.message); S.loop = !S.loop; paintLoop(); }
 };
 $('btnCancel').onclick = cancelRoute;
-$('btnStart2').onclick = () => startNav();
+$('btnStart2').onclick = () => startDrive();
 paintLoop();
 $('drawSnap').onclick = async () => {
   if (S.draw.length < 2) return toast('Add at least two points');
@@ -858,6 +858,7 @@ function onFix(f) {
   S.speed = S.speed * 0.4 + (v || 0) * 0.6;
   S.prevFix = { lat: f.lat, lon: f.lon, t: ft, now };
   S.fix = f;
+  if (S.liaison && segLen([f.lat, f.lon], S.liaison.start) <= Math.min(70, Math.max(45, (f.accuracy || 10) * 1.5))) return arriveAtStart();
 
   const loc = S.tracker.locate(f.lat, f.lon);
   const offLimit = Math.max(35, (f.accuracy || 10) * 1.5);
@@ -937,7 +938,7 @@ function onFix(f) {
     const L = S.route.total, left = S.route.loop ? L - (((sNow % L) + L) % L) : Math.max(0, L - loc.s);
     const eta = new Date(now + routeSeconds() * (left / L) * 1000);
     const cp = S.cps?.length ? `CP ${S.cps.filter((c) => c.passed).length}/${S.cps.length} · ` : '';
-    $('remain').textContent = cp + (S.route.loop ? `${fmtDist(left)} to the line`
+    $('remain').textContent = S.liaison ? `${fmtDist(left)} to the start` : cp + (S.route.loop ? `${fmtDist(left)} to the line`
       : `${fmtDist(left)} to go · ETA ${eta.getHours()}:${String(eta.getMinutes()).padStart(2, '0')}`);
     glyph(up.note);
   }
@@ -1020,23 +1021,27 @@ function startNav() {
   S.offCount = 0; S.prevFix = null; S.speed = 0;
   S.lastS = null; S.sU = 0; S.prevS = null;
   S.cps = (S.route.checkpoints || []).map((c) => ({ ...c, passed: false })); S.lockWarned = false;
-  $('lapInfo').hidden = !S.route.loop; $('lapInfo').textContent = S.route.loop ? (settings.start === 'flying' ? '⏱ TIME ATTACK — clock starts at the line' : 'Waiting for GO') : '';
+  const liaison = !!S.liaison; // driving TO the start: guided, but no clock
+  $('lapInfo').hidden = !S.route.loop && !liaison;
+  $('lapInfo').textContent = liaison ? `LIAISON — to the start of ${S.liaison.main.spec?.name ? '“' + S.liaison.main.spec.name + '”' : S.liaison.main.loop ? 'the circuit' : 'the stage'} · no timing`
+    : S.route.loop ? (settings.start === 'flying' ? '⏱ TIME ATTACK — clock starts at the line' : 'Waiting for GO') : '';
   const flying = S.route.loop && settings.start === 'flying' && !S.route.spec?.parking;
-  S.race = new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1, flying });
-  $('raceClock').textContent = '0:00.0';
+  S.race = liaison ? null : new Race({ total: S.route.total, loop: S.route.loop, laps: S.route.loop ? settings.laps : 1, flying });
+  $('raceClock').textContent = liaison ? 'LIAISON' : '0:00.0';
   S.lastCalled = null; S.ghostSaved = false;
-  S.ghost = loadGhost(); $('delta').textContent = S.ghost ? 'ghost ready' : ''; $('delta').className = '';
+  S.ghost = liaison ? null : loadGhost(); $('delta').textContent = S.ghost ? 'ghost ready' : ''; $('delta').className = '';
   S.ghostMarker?.remove(); S.ghostMarker = null;
   S.accCircle?.remove(); S.accCircle = null; // the GPS-accuracy circle is for when you're not driving
   S.clockTimer = setInterval(() => { if (S.race) $('raceClock').textContent = fmtRaceTime(S.race.elapsed(Date.now())); }, 100);
   keepAwake();
   unlockAudio();
-  speak('Stage ready.', true); // also unlocks speech on iOS (needs a tap)
+  speak(liaison ? 'Liaison. Heading to the start.' : 'Stage ready.', true); // also unlocks speech on iOS (needs a tap)
 
-  const sim = simKmh();
+  const sim = liaison ? 0 : simKmh();
   S.simRun = sim > 0; // simulated runs are never recorded (no leaderboard, best time or ghost)
   const go = () => { S.race.start(Date.now()); if (sim > 0) startSim(sim); };
-  if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); }
+  if (liaison) { /* no countdown: the clock starts at the real start */ }
+  else if (S.route.spec?.parking) { speak('Parking hunt. Closest streets first.'); go(); }
   else if (flying) { speak('Time attack. The clock starts when you cross the line.'); go(); }
   else countdown(go);
   if (sim > 0) {
@@ -1083,6 +1088,7 @@ function countdown(go) {
 
 function stopNav() {
   S.nav = false;
+  if (S.liaison) { const m = S.liaison.main; S.liaison = null; S.liaisonLayer?.remove(); S.liaisonLayer = null; setRoute(m, { fit: false }); }
   document.body.classList.remove('np-full', 'map-full'); $('mapBack').hidden = true;
   S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
@@ -1100,7 +1106,7 @@ function stopNav() {
   setRotation(0); map.dragging.enable();
 }
 
-$('btnGo').onclick = () => (S.nav ? stopNav() : startNav());
+$('btnGo').onclick = () => (S.nav ? stopNav() : startDrive());
 map.on('dragstart', () => { if (S.nav) S.follow = false; });
 const paintCompass = () => { $('btnCompass').textContent = !S.nav ? '◎' : S.headingUp ? '▲' : 'N'; $('btnCompass').classList.toggle('on', S.follow && S.nav); };
 $('btnCompass').onclick = () => {
@@ -1197,7 +1203,7 @@ function finishRace(res) {
   S.lastResult = res;
   openSheet('resultSheet');
 }
-$('resAgain').onclick = () => { $('resultSheet').hidden = true; startNav(); };
+$('resAgain').onclick = () => { $('resultSheet').hidden = true; startDrive(); };
 $('resShare').onclick = async () => {
   const R = S.route, res = S.lastResult, name = R.spec?.name || 'Rally stage';
   const u = settings.units === 'imperial' ? 'mph' : 'km/h';
@@ -2121,3 +2127,39 @@ $('termColors').innerHTML = TERM_COLORS.map(([c, n]) => `<button data-c="${c}" s
 $('termColors').addEventListener('click', (e) => { const c = e.target.closest('button')?.dataset.c; if (c) setTermColor(c); });
 $('termCustom').oninput = (e) => setTermColor(e.target.value);
 applyTermColor();
+
+// ---------- 🚗 liaison: far from the start? get guided there first, then the timing starts ----------
+// Press Start more than 150 m from the start (or start/finish line): the app routes you there with normal calls
+// and no clock. Arriving within ~45 m switches to the real route: countdown (or time attack), laps, timing.
+const LIAISON_M = 150;
+async function startDrive() {
+  if (!S.route || S.nav) return;
+  if (simKmh() > 0 || S.route.spec?.parking) return startNav();
+  const start = S.route.points[0];
+  let here = S.fix ? [S.fix.lat, S.fix.lon] : null;
+  try { // a fresh position, so "how far is the start" is right now, not where you were a while ago
+    const pos = await new Promise((ok, no) => navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy: true, maximumAge: 3000, timeout: 4000 }));
+    here = [pos.coords.latitude, pos.coords.longitude];
+  } catch { /* keep the last known position */ }
+  if (S.nav) return;
+  if (!here || segLen(here, start) <= LIAISON_M) return startNav();
+  toast(`Guiding you to the start (${fmtDist(segLen(here, start))} away) — timing starts there`, 5000);
+  try {
+    VEHICLE = S.route.spec?.vehicle || 'car';
+    const r = await osrmRoute([here, start], S.speed > 3 ? S.heading : null, 'fastest', !!S.route.spec?.noToll);
+    const main = S.route;
+    S.liaison = { main, start };
+    setRoute({ ...r, spec: { via: [here, start], name: 'To the start', noToll: !!main.spec?.noToll, liaison: true }, loop: false, dest: start, waypoints: [start] }, { fit: false });
+    for (const n of S.route.notes) if (n.kind === 'finish') n.label = 'start'; // "finish" would be confusing here
+    S.liaisonLayer = L.polyline(main.loop ? [...main.points, main.points[0]] : main.points, { color: getComputedStyle(document.body).getPropertyValue('--route').trim() || '#ffcc00', weight: 4, opacity: 0.45, dashArray: '8 10', interactive: false }).addTo(map);
+    startNav();
+  } catch (err) { toast('Couldn’t route to the start: ' + err.message + ' — starting here'); startNav(); }
+}
+function arriveAtStart() {
+  const m = S.liaison.main;
+  S.liaison = null; S.liaisonLayer?.remove(); S.liaisonLayer = null;
+  stopNav();
+  setRoute(m, { fit: false });
+  toast(m.loop ? '🏁 At the start/finish line — get ready' : '🏁 At the start — get ready', 3000);
+  startNav(); // countdown, or time attack, as usual
+}

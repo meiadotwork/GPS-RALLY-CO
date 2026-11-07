@@ -282,6 +282,12 @@ By default the calls **don't say the distance to the next call** ("left 4, 200, 
 
 The map and the route line are tinted to match. Anyone who had the retired Arcade or Dot-matrix skin is moved to Terminal.
 
+## 🚗 Liaison: getting to the start
+
+Press **Start** more than **150 m** from the route's start (a circuit's start/finish line) and the app **guides you there first**. This is the **liaison**, as in rallying: normal turn-by-turn calls and a dashed outline of the circuit on the map, but **no clock**. The screen shows "LIAISON — to the start of … · no timing" and the distance to the start.
+
+When you get **within about 45 m of the start**, the real route takes over: 3-2-1 GO (or time attack's flying start), then laps and timing as usual. **Stop** during the liaison puts your route back as it was. Race again from the finish of an A-to-B stage guides you back to its start. Simulation always starts on the line.
+
 ## Time attack (circuits)
 
 On a lap circuit, **Route → Circuit → Start** has two choices:
