@@ -2094,8 +2094,8 @@ setSim(false);
 
 
 // ---------- red light timer: two buttons (35 s and 70 s by default, both yours to set) ----------
-// Nothing is automatic: it runs until YOU close it. You might be timing a light further up the road, so it
-// never stops because the car moved. At zero it shows GREEN and keeps counting the extra seconds.
+// It never stops because the car moved (you might be timing a light further up the road): it runs for the
+// red time you chose and disappears at zero. ✕ closes it early.
 let TMR = null; // { end, secs, beeped, interval }
 const clampSecs = (v, d) => Math.max(5, Math.min(600, Math.round(+v || d)));
 const redA = () => clampSecs(settings.redSecsA, 35), redB = () => clampSecs(settings.redSecsB, 70);
@@ -2116,10 +2116,7 @@ function paintTimer() {
   if (!TMR) return;
   const left = TMR.end - Date.now();
   if (!TMR.beeped && left <= 10000 && left > 0) { TMR.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
-  if (left <= 0) { // green: stays on screen, counting the extra seconds, until you close it
-    $('redNum').textContent = `GREEN +${Math.floor(-left / 1000)}`; $('redTimer').classList.add('green'); $('redTimer').classList.remove('last');
-    return;
-  }
+  if (left <= 0) return timerStop(); // the red time is over: the timer goes away
   $('redNum').textContent = Math.ceil(left / 1000);
   $('redTimer').classList.remove('green');
   $('redTimer').classList.toggle('last', left <= 10000);

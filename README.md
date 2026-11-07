@@ -262,7 +262,7 @@ Every finished run is recorded on that route's leaderboard on this phone (`board
 
 Two **RED** buttons on the right of the screen, **35** and **70** seconds by default. They show while driving and on the map. **Tap one when a light turns red** and it counts down in big numbers.
 - **One double beep at 10 seconds left**, and the timer turns yellow.
-- **Nothing is automatic. It runs until you close it.** It doesn't stop because the car moved, since you might be timing a light further up the road. At zero it shows **GREEN +3, +4…**, counting the extra seconds.
+- **It runs for exactly the red time and disappears at zero.** Driving doesn't stop it, since you might be timing a light further up the road. **✕ Close** ends it early.
 - **−5 / +5** adjust it, **↻ 35 / ↻ 70** start again from either time, and **✕ Close** stops it.
 - **Settings:** set the seconds for each button (5–600), or hide the buttons.
 
