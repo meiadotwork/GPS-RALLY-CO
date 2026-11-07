@@ -398,18 +398,18 @@ body.skin-trip #toast { border-radius: 0; }
 .red-actions .pill { min-height: 48px; }
 
 /* ⏱ red light timer button */
-#timerBtn { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(120px + var(--safe-b)); z-index: 700;
+.timerBtn { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(120px + var(--safe-b)); z-index: 700;
   width: 84px; height: 84px; border-radius: 50%; border: 4px solid #fff; background: #d0021b; color: #fff; font-size: 26px; line-height: 1;
   display: grid; place-content: center; justify-items: center; box-shadow: 0 4px 14px #000a; }
-#timerBtn b { font: 900 18px/1 ui-monospace, "SF Mono", Menlo, monospace; margin-top: 2px; }
-body.map-full #timerBtn { bottom: calc(80px + var(--safe-b)); }
+.timerBtn b { font: 900 18px/1 ui-monospace, "SF Mono", Menlo, monospace; margin-top: 2px; }
+body.map-full .timerBtn { bottom: calc(80px + var(--safe-b)); }
 #redTimer.green { border-color: #2fd27a; background: #002a12; }
 #redTimer.green #redNum { color: #2fd27a; }
 #setRedSecs { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
 #redNum { margin-bottom: 10px; }
 /* the ⏱ button never covers the review / recording bars */
-#timerBtn { z-index: 645; }
-body.reviewing #timerBtn { display: none; }
+.timerBtn { z-index: 645; }
+body.reviewing .timerBtn { display: none; }
 
 /* The terminal font, as in Criminal Terminal: Web437 IBM VGA 8x16 by VileR (int10h.org), CC BY-SA 4.0, see fonts/LICENSE.txt */
 @font-face { font-family: 'IBM VGA 8x16'; src: url('fonts/Web437_IBM_VGA_8x16.woff') format('woff'); font-display: swap; }
@@ -475,7 +475,7 @@ body.skin-term input[type="text"], body.skin-term input[type="number"], body.ski
 body.skin-term input[type="range"] { accent-color: var(--ink); }
 
 /* ⏱ timer */
-body.skin-term #timerBtn { border-radius: 2px; border: 2px solid var(--ink); background: #050505; color: var(--ink);
+body.skin-term .timerBtn { border-radius: 2px; border: 2px solid var(--ink); background: #050505; color: var(--ink);
   box-shadow: 0 0 12px rgba(var(--t-rgb), .45); text-shadow: 0 0 4px rgba(var(--t-rgb), .7); }
 body.skin-term #redNum { font-family: 'IBM VGA 8x16', 'Courier New', Courier, monospace; color: var(--ink); text-shadow: 0 0 6px rgba(var(--t-rgb), .8), 0 0 20px rgba(var(--t-rgb), .35); }
 body.skin-term #redTimer.last { border-color: var(--warn); }
@@ -512,7 +512,7 @@ body.skin-term #editBar, body.skin-term #drawBar, body.skin-term #redTimer {
   background: #000; box-shadow: none; border: 2px solid var(--t-dim); border-radius: 0; }
 body.skin-term .sheet { background: #000; box-shadow: none; border: 0; border-top: 2px solid var(--t-dim); border-radius: 0; }
 body.skin-term .pill, body.skin-term .round, body.skin-term .fix-btn, body.skin-term .chips button, body.skin-term .add-col button,
-body.skin-term #timerBtn, body.skin-term #toast {
+body.skin-term .timerBtn, body.skin-term #toast {
   background: #000; border: 2px solid var(--t); border-radius: 0; box-shadow: none; color: var(--t); }
 body.skin-term .pill.go, body.skin-term #btnCompass, body.skin-term .seg button.on, body.skin-term .chips button.on { background: var(--t); color: #000; box-shadow: none; }
 body.skin-term .pill.go.stop { background: #000; color: var(--t); border: 2px solid var(--t); }
@@ -525,9 +525,9 @@ body.skin-term .leaflet-container { background: #000; }
 body.skin-term #redTimer.last { border-color: var(--warn); }
 
 /* timer button: text only, no emoji */
-#timerBtn small { font: 900 12px/1 system-ui, sans-serif; letter-spacing: 2px; }
-#timerBtn b { font-size: 26px; margin-top: 4px; }
-body.skin-term #timerBtn small, body.skin-term #timerBtn b { font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
+.timerBtn small { font: 900 12px/1 system-ui, sans-serif; letter-spacing: 2px; }
+.timerBtn b { font-size: 26px; margin-top: 4px; }
+body.skin-term .timerBtn small, body.skin-term .timerBtn b { font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
 
 /* getting there: editing the way to the start */
 #apprBar { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 650; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 10px; }
@@ -535,5 +535,15 @@ body.skin-term #timerBtn small, body.skin-term #timerBtn b { font-family: 'IBM V
 #apprBar .lb-txt small { color: var(--dim); }
 #apprBox .seg { margin-top: 8px; }
 body.skin-term #apprBar { background: #000; border: 2px solid var(--t-dim); border-radius: 0; }
-body.appredit #timerBtn { display: none; }
+body.appredit .timerBtn { display: none; }
 body.appredit #toast { bottom: calc(160px + var(--safe-b)); }
+
+/* two red light timer buttons, stacked on the right */
+#timerBtnA { bottom: calc(214px + var(--safe-b)); }
+body.map-full #timerBtnA { bottom: calc(174px + var(--safe-b)); }
+.red-actions { grid-template-columns: repeat(4, 1fr); }
+.red-actions .wide { grid-column: 1 / -1; }
+.red-secs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.red-secs label { margin: 14px 0 0; }
+.red-secs input { width: 100%; margin-top: 6px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
+body.skin-term .red-secs input { border: 2px solid var(--t); border-radius: 0; background: #000; }

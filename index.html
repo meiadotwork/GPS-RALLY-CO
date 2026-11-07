@@ -32,13 +32,16 @@
 </section>
 
 <button id="mapBack" class="pill go" hidden>↩ Back to driving</button>
-<button id="timerBtn" hidden aria-label="Start the red light countdown"><small>RED</small><b id="timerBtnSecs">70</b></button>
+<button id="timerBtnA" class="timerBtn" hidden aria-label="Start the short red light countdown"><small>RED</small><b id="timerSecsA">35</b></button>
+<button id="timerBtnB" class="timerBtn" hidden aria-label="Start the long red light countdown"><small>RED</small><b id="timerSecsB">70</b></button>
 <div id="redTimer" hidden>
   <div id="redNum">0</div>
   <div class="red-actions">
     <button id="redMinus" class="pill ghost">−5</button>
     <button id="redPlus" class="pill ghost">+5</button>
-    <button id="redCancel" class="pill ghost" title="Close the timer">✕ Close</button>
+    <button id="redRestartA" class="pill ghost" title="Start again from the first time">↻ 35</button>
+    <button id="redRestartB" class="pill ghost" title="Start again from the second time">↻ 70</button>
+    <button id="redCancel" class="pill ghost wide" title="Close the timer">✕ Close</button>
   </div>
 </div>
 <div id="toast" hidden></div>
@@ -263,11 +266,13 @@
   <p class="fine">Off by default: elevation data is too rough for real roads. Add your own road notes instead: <b>＋ Note</b> while driving (crest, jump, dip, bumps, gravel, narrows…), or in Review → ＋ Add at ⊕ → Words only. They’re called every time you pass.</p>
   <label>Red light timer</label>
   <div class="seg" id="setRed">
-    <button data-v="on">Show button</button><button data-v="off">Hide</button>
+    <button data-v="on">Show buttons</button><button data-v="off">Hide</button>
   </div>
-  <label>Countdown (seconds)</label>
-  <input id="setRedSecs" type="number" min="5" max="600" step="1" inputmode="numeric">
-  <p class="fine">Tap the RED button when a light turns red and it counts down this many seconds. One double beep at 10 seconds left. −5 / +5 adjust it, and it closes when you drive off.</p>
+  <div class="red-secs">
+    <label>First button (seconds)<input id="setRedSecsA" type="number" min="5" max="600" step="1" inputmode="numeric"></label>
+    <label>Second button (seconds)<input id="setRedSecsB" type="number" min="5" max="600" step="1" inputmode="numeric"></label>
+  </div>
+  <p class="fine">Two RED buttons on the right. Tap one when a light turns red and it counts down that many seconds. One double beep at 10 seconds left. It never stops by itself: at zero it shows GREEN and counts the extra seconds until you close it. −5 / +5 adjust it, and ↻ starts again.</p>
   <label>Speed cameras</label>
   <div class="seg" id="setCams">
     <button data-v="off">Off</button><button data-v="on">Call them</button>

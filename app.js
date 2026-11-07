@@ -18,9 +18,10 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecs: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
+if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
 // recce notes: words the crew added, pinned to a spot on the road (kept on this phone)
 let recce = [];
 // your corrections to calls ("that call was wrong"), pinned by location, on this phone
@@ -2092,26 +2093,35 @@ $('simSpeed').onchange = (e) => setSim(true, e.target.value || settings.simKmh);
 setSim(false);
 
 
-// ---------- ⏱ red light timer: one tap counts down your time (Settings: seconds, on/off) ----------
-let TMR = null; // { end, beeped, interval }
-const redSecs = () => Math.max(5, Math.min(600, Math.round(+settings.redSecs || 70)));
-function showTimerBtn() { $('timerBtn').hidden = settings.redTimer === 'off' || !!TMR; $('timerBtnSecs').textContent = redSecs(); }
-function timerStart() {
+// ---------- red light timer: two buttons (35 s and 70 s by default, both yours to set) ----------
+// Nothing is automatic: it runs until YOU close it. You might be timing a light further up the road, so it
+// never stops because the car moved. At zero it shows GREEN and keeps counting the extra seconds.
+let TMR = null; // { end, secs, beeped, interval }
+const clampSecs = (v, d) => Math.max(5, Math.min(600, Math.round(+v || d)));
+const redA = () => clampSecs(settings.redSecsA, 35), redB = () => clampSecs(settings.redSecsB, 70);
+function showTimerBtn() {
+  const off = settings.redTimer === 'off' || !!TMR;
+  $('timerBtnA').hidden = off; $('timerBtnB').hidden = off;
+  $('timerSecsA').textContent = redA(); $('timerSecsB').textContent = redB();
+  $('redRestartA').textContent = `↻ ${redA()}`; $('redRestartB').textContent = `↻ ${redB()}`;
+}
+function timerStart(secs) {
   unlockAudio();
-  TMR = { end: Date.now() + redSecs() * 1000, beeped: false, moving: 0, t0: Date.now() };
+  clearInterval(TMR?.interval);
+  TMR = { end: Date.now() + secs * 1000, secs, beeped: secs <= 10 };
   $('redTimer').hidden = false; $('redTimer').classList.remove('last', 'green'); showTimerBtn();
   TMR.interval = setInterval(paintTimer, 200); paintTimer();
 }
 function paintTimer() {
   if (!TMR) return;
   const left = TMR.end - Date.now();
-  if (!TMR.beeped && left <= 10000) { TMR.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
-  if (left <= 0) { // green: show it briefly, then close
-    $('redNum').textContent = 'GREEN'; $('redTimer').classList.add('green'); $('redTimer').classList.remove('last');
-    if (left < -4000) timerStop();
+  if (!TMR.beeped && left <= 10000 && left > 0) { TMR.beeped = true; beep(880, 0.18); setTimeout(() => beep(880, 0.18), 260); }
+  if (left <= 0) { // green: stays on screen, counting the extra seconds, until you close it
+    $('redNum').textContent = `GREEN +${Math.floor(-left / 1000)}`; $('redTimer').classList.add('green'); $('redTimer').classList.remove('last');
     return;
   }
   $('redNum').textContent = Math.ceil(left / 1000);
+  $('redTimer').classList.remove('green');
   $('redTimer').classList.toggle('last', left <= 10000);
 }
 function timerStop() {
@@ -2119,19 +2129,19 @@ function timerStop() {
   clearInterval(TMR.interval); TMR = null;
   $('redTimer').hidden = true; $('redTimer').classList.remove('last', 'green'); showTimerBtn();
 }
-function timerOnFix() { // drove off (green came early): close it
-  if (!TMR || Date.now() - TMR.t0 < 5000) return;
-  TMR.moving = S.speed * 3.6 > 15 ? TMR.moving + 1 : 0;
-  if (TMR.moving >= 3) timerStop();
-}
-$('timerBtn').onclick = (e) => { e.stopPropagation(); timerStart(); };
+function timerOnFix() { /* no automation: the driver decides when the timer ends */ }
+$('timerBtnA').onclick = (e) => { e.stopPropagation(); timerStart(redA()); };
+$('timerBtnB').onclick = (e) => { e.stopPropagation(); timerStart(redB()); };
+$('redRestartA').onclick = (e) => { e.stopPropagation(); timerStart(redA()); };
+$('redRestartB').onclick = (e) => { e.stopPropagation(); timerStart(redB()); };
 $('redMinus').onclick = (e) => { e.stopPropagation(); if (TMR) { TMR.end -= 5000; paintTimer(); } };
 $('redPlus').onclick = (e) => { e.stopPropagation(); if (TMR) { TMR.end += 5000; if (TMR.end - Date.now() > 10000) TMR.beeped = false; paintTimer(); } };
 $('redCancel').onclick = (e) => { e.stopPropagation(); timerStop(); };
 bindSeg('setRed', 'redTimer');
 $('setRed').addEventListener('click', () => { if (settings.redTimer === 'off') timerStop(); showTimerBtn(); });
-$('setRedSecs').value = redSecs();
-$('setRedSecs').onchange = (e) => { settings.redSecs = Math.max(5, Math.min(600, Math.round(+e.target.value || 70))); e.target.value = settings.redSecs; saveSettings(); showTimerBtn(); toast(`Red light timer: ${settings.redSecs} seconds`); };
+$('setRedSecsA').value = redA(); $('setRedSecsB').value = redB();
+$('setRedSecsA').onchange = (e) => { settings.redSecsA = clampSecs(e.target.value, 35); e.target.value = settings.redSecsA; saveSettings(); showTimerBtn(); toast(`First timer: ${settings.redSecsA} s`); };
+$('setRedSecsB').onchange = (e) => { settings.redSecsB = clampSecs(e.target.value, 70); e.target.value = settings.redSecsB; saveSettings(); showTimerBtn(); toast(`Second timer: ${settings.redSecsB} s`); };
 showTimerBtn();
 
 // terminal colour picker
