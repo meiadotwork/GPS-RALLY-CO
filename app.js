@@ -1,5 +1,5 @@
 import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade } from './pacenotes.js?v=20261109';
-import { RouteTracker, CallScheduler, DriveSim } from './navcore.js?v=20261107';
+import { RouteTracker, CallScheduler, DriveSim, gpsStep } from './navcore.js?v=20261109';
 import { buildStage } from './sample-route.js?v=20261107';
 import { specToHash, hashToSpec } from './share.js?v=20261107';
 import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js?v=20261107';
@@ -866,16 +866,13 @@ function onFix(f) {
   // race clock, lap times and timers all use the phone's clock (the same one GO used); the GPS timestamp
   // (which can be on another clock) is only used for speed between fixes
   const now = Date.now(), ft = f.t || now;
-  // speed: device value if present, otherwise from successive fixes
-  let v = f.speed;
-  if ((v == null || isNaN(v)) && S.prevFix) {
-    // GPS time between fixes, unless it disagrees with the phone's clock (some devices send odd timestamps)
-    const dG = ft - S.prevFix.t, dN = now - S.prevFix.now;
-    const dt = (dG > 0 && Math.abs(dG - dN) < Math.max(300, dN * 0.3) ? dG : dN) / 1000;
-    v = dt > 0 ? segLen([S.prevFix.lat, S.prevFix.lon], [f.lat, f.lon]) / dt : 0;
-  }
-  S.speed = S.speed * 0.4 + (v || 0) * 0.6;
-  S.prevFix = { lat: f.lat, lon: f.lon, t: ft, now };
+  // speed and distance driven, with GPS jumps thrown out (a jump once showed 8002 km/h top speed)
+  const step = gpsStep(S.prevFix, f, now, S.speed);
+  S.speed = S.speed * 0.4 + step.v * 0.6;
+  S.moved = step.dd;
+  S.jumps = step.jump ? (S.jumps || 0) + 1 : 0;
+  // measure from the last good fix; after two jumps in a row the GPS has really moved on: start again from here
+  if (!step.jump || !S.prevFix || S.jumps >= 2) { S.prevFix = { lat: f.lat, lon: f.lon, t: ft, now }; if (S.jumps >= 2) S.jumps = 0; }
   S.fix = f; S.fixAt = now;
   if (S.liaison && segLen([f.lat, f.lon], S.liaison.start) <= Math.min(70, Math.max(45, (f.accuracy || 10) * 1.5))) return arriveAtStart();
 
@@ -930,7 +927,7 @@ function onFix(f) {
     const reach = Math.min(70, Math.max(45, (f.accuracy || 10) * 1.5));
     if (segLen([f.lat, f.lon], S.route.dest) <= reach && (sNow >= S.route.total - 250 || S.offCount > 0)) onRaceEvent(S.race.finish(now), now);
   }
-  if (S.race) for (const e of S.race.update(now, sNow, S.speed)) onRaceEvent(e, now);
+  if (S.race) for (const e of S.race.update(now, sNow, S.speed, S.moved)) onRaceEvent(e, now);
   if (S.race && S.nav) paintGhost(now, sNow);
   if (!S.nav) return; // the race just finished
 

@@ -186,3 +186,25 @@ export class DriveSim {
 }
 
 export { segLen };
+
+// ---------- GPS sanity: speed and distance driven, without glitches ----------
+export const MAX_SPEED = 90; // m/s (324 km/h): anything faster between two fixes is a GPS jump, not driving
+
+/**
+ * One GPS update → { v: speed m/s, dd: metres actually driven since the last good fix, jump }.
+ * prev: { lat, lon, t (GPS ms), now (phone ms) } or null; f: the fix (speed in m/s if the device gives it).
+ * A position jump (impossible speed, or very poor accuracy) adds no distance and keeps the last speed;
+ * a device speed that is impossible is ignored too.
+ */
+export function gpsStep(prev, f, now, lastSpeed = 0) {
+  if (!prev) return { v: validSpeed(f.speed) ?? 0, dd: 0, jump: false };
+  const dG = (f.t || now) - prev.t, dN = now - prev.now;
+  const dt = (dG > 0 && Math.abs(dG - dN) < Math.max(300, dN * 0.3) ? dG : dN) / 1000;
+  const d = segLen([prev.lat, prev.lon], [f.lat, f.lon]);
+  const vCalc = dt > 0 ? d / dt : Infinity;
+  const jump = (vCalc > MAX_SPEED && d > 25) || (f.accuracy != null && f.accuracy > 60);
+  let v = validSpeed(f.speed);
+  if (v == null) v = jump || dt < 0.4 ? lastSpeed : vCalc; // too close in time to measure: keep the last speed
+  return { v: Math.min(v, MAX_SPEED), dd: jump ? 0 : d, jump };
+}
+const validSpeed = (v) => (v == null || isNaN(v) || v < 0 || v > MAX_SPEED ? null : v);

@@ -651,3 +651,18 @@ test('print: directions match the turns; poster prints only sheets the route cro
   const out = renderPrint(r, { what: 'both', mode: 'poster', z: 17, paper: 'a4', orient: 'portrait', background: 'none', units: 'metric' }, { fmtDist: (m) => `${Math.round(m)} m` });
   assert.ok(out.html.includes('Poster index') && out.html.includes('Then go') && /@page \{ size: A4 portrait/.test(out.pageCss));
 });
+
+import { gpsStep, MAX_SPEED } from '../navcore.js';
+test('GPS glitches: a position jump gives no crazy top speed and adds no distance', () => {
+  const c0 = [40.7, -73.99], at = (m) => offsetPoint(c0, 90, m);
+  const fix = (m, t, extra = {}) => ({ lat: at(m)[0], lon: at(m)[1], t, ...extra });
+  let prev = null, v = 0, dist = 0, top = 0;
+  const feed = (f, now) => { const r = gpsStep(prev, f, now, v); v = r.v; dist += r.dd; top = Math.max(top, v); if (!r.jump || !prev) prev = { lat: f.lat, lon: f.lon, t: f.t, now }; return r; };
+  for (let i = 0; i <= 10; i++) feed(fix(i * 15, i * 1000), i * 1000);            // 15 m/s for 10 s = 150 m
+  const j = feed(fix(2400, 11000), 11000);                                          // GPS jumps 2.25 km in 1 s
+  assert.ok(j.jump); assert.equal(j.dd, 0);
+  for (let i = 12; i <= 15; i++) feed(fix(150 + (i - 11) * 15, i * 1000), i * 1000); // back on track
+  assert.ok(top <= MAX_SPEED && top < 20, `top ${top * 3.6} km/h`);
+  assert.ok(Math.abs(dist - 210) < 5, `distance ${dist}`);
+  assert.ok(Math.abs(gpsStep(prev, fix(225, 16000, { speed: 2222 }), 16000, 15).v - 15) < 0.01); // an impossible device speed is ignored
+});

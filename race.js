@@ -33,7 +33,7 @@ export class Race {
    * @param t  time (ms)   @param s  distance along route (unwrapped on a circuit)   @param v  speed (m/s)
    * @returns events: { type: 'lapstart' } | { type: 'lap', n, ms, best } | { type: 'finish', result }
    */
-  update(t, s, v = 0) {
+  update(t, s, v = 0, dd = null) { // dd: metres actually driven since the last fix (GPS, jumps removed)
     if (this.state !== 'running') return [];
     if (this.init) { // first position after GO
       this.init = false; this.lastS = s; this.s0 = s;
@@ -56,8 +56,8 @@ export class Race {
     if (this.onLine && s > this.lastS + 0.5 && s - this.lineS > 2 && Math.floor(s / this.total) === Math.floor(this.lineS / this.total)) {
       this._go(t, this.lineS); ev.push({ type: 'lapstart' }); this.lastS = s; return ev;
     }
-    this.top = Math.max(this.top, v || 0);
-    if (s > this.lastS) this.dist += s - this.lastS;
+    this.top = Math.max(this.top, Math.min(v || 0, 90)); // never more than 324 km/h: that's a GPS glitch
+    if (dd != null) this.dist += dd; else if (s > this.lastS) this.dist += s - this.lastS;
     if (this.loop) {
       const L = this.total;
       if (Math.floor(s / L) > Math.floor(this.lastS / L) && s > this.skipUntil) {
