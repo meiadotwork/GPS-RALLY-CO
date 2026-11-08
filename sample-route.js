@@ -2,7 +2,7 @@
 // sparse, unevenly spaced nodes with a little position noise.
 // Used by the Node test and by the app's "Demo stage" button.
 
-import { offsetPoint, segLen } from './pacenotes.js?v=20261107';
+import { offsetPoint, segLen } from './pacenotes.js?v=20261109';
 
 // [kind, a, b, expect]  straight: length m | arc: radius m, angle deg (+left / -right)
 export const STAGE = [

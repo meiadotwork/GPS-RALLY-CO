@@ -1,4 +1,4 @@
-import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade } from './pacenotes.js?v=20261107';
+import { generatePaceNotes, linkFor, offsetPoint, segLen, RECCE_WORDS, showGrade } from './pacenotes.js?v=20261109';
 import { RouteTracker, CallScheduler, DriveSim } from './navcore.js?v=20261107';
 import { buildStage } from './sample-route.js?v=20261107';
 import { specToHash, hashToSpec } from './share.js?v=20261107';
@@ -830,6 +830,7 @@ function glyph(n) {
   if (n.kind === 'finish') return (g.innerHTML = '<path d="M28 90 V12 M28 14 H76 L66 30 L76 46 H28"/>');
   if (n.kind === 'vertical') return (g.innerHTML = n.text.includes('dip') ? '<path d="M8 34 Q50 96 92 34"/>' : '<path d="M8 74 Q50 6 92 74"/>');
   if (n.kind === 'camera') return (g.innerHTML = '<path d="M16 36 H84 V80 H16 Z M36 36 L42 24 H58 L64 36 M62 58 A12 12 0 1 1 38 58 A12 12 0 1 1 62 58"/>');
+  if (n.kind === 'recce' && /speed camera/.test(n.text || '')) return (g.innerHTML = '<path d="M16 36 H84 V80 H16 Z M36 36 L42 24 H58 L64 36 M62 58 A12 12 0 1 1 38 58 A12 12 0 1 1 62 58"/>'); // your own camera
   if (n.kind === 'recce' || n.kind === 'feature') return (g.innerHTML = '<text x="50" y="76" text-anchor="middle" font-size="72">!</text>');
   if (n.chicane) return (g.innerHTML = `<path d="M50 94 V74 L${n.dir === 'right' ? 72 : 28} 54 L${n.dir === 'right' ? 28 : 72} 32 L50 12"/>`);
   if (n.shape === 'roundabout') return (g.innerHTML = '<path d="M50 92 V68 M50 68 A16 16 0 1 1 66 52 L84 40"/>');

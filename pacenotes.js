@@ -498,6 +498,7 @@ export function verticalFeatures(elev) {
 // Words the crew can add on a recce drive (tap a note, or "+" while driving).
 export const RECCE_WORDS = {
   Hazard: ['caution', 'double caution', 'danger', 'care', 'maybe'],
+  Camera: ['speed camera'],
   Line: ["don't cut", 'cut', 'cut late', 'keep left', 'keep middle', 'keep right', 'brake', 'hard brake'],
   Road: ['crest', 'big crest', 'jump', 'big jump', 'dip', 'compression', 'bumps', 'bad bumps', 'narrows', 'widens', 'camber', 'off camber'],
   Surface: ['slippy', 'loose', 'gravel', 'tarmac', 'mud', 'snow', 'ice', 'water', 'ford', 'ruts'],

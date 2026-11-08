@@ -1,7 +1,7 @@
 // Parking hunt: drive every street within a radius of the destination, closest first.
 // Pure ES module (no DOM, no network): OSM data in, a drivable path out.
 
-import { segLen, bearing } from './pacenotes.js?v=20261107';
+import { segLen, bearing } from './pacenotes.js?v=20261109';
 
 const RESIDENTIAL = ['residential', 'living_street', 'unclassified', 'tertiary', 'tertiary_link'];
 const MAIN = ['secondary', 'secondary_link', 'primary', 'primary_link'];
