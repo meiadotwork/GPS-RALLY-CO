@@ -102,6 +102,7 @@
       <button id="btnNotes" class="pill ghost">Stage notes</button>
       <button id="btnReview" class="pill ghost">🔍 Review notes on map</button>
       <button id="btnBoard2" class="pill ghost">🏆 Leaderboard</button>
+      <button id="btnPrint" class="pill ghost">🖨 Print</button>
     </div>
     <div class="sim-box">
       <label class="sim"><input type="checkbox" id="simOn"> Simulate at</label>
@@ -154,6 +155,23 @@
 <div id="apprBar" hidden>
   <div class="lb-txt"><b>Getting there</b><small>Tap the map where the way should pass · drag to move · tap a point to remove</small></div>
   <div class="rv-actions"><button id="apprUndo" class="pill ghost">↶ Undo</button><button id="apprDone" class="pill go">Done</button></div>
+</div>
+
+<!-- print: map (one page or poster) and directions -->
+<style id="prPageCss"></style>
+<div id="printView" hidden>
+  <div class="pp-bar">
+    <div class="pp-top"><b>🖨 Print</b><span id="prInfo"></span><button id="prClose" class="pill ghost">✕</button></div>
+    <div class="seg" id="prWhat"><button data-v="both">Map + directions</button><button data-v="map">Map</button><button data-v="dirs">Directions</button></div>
+    <div id="prMapOpts">
+      <div class="seg" id="prMode"><button data-v="fit">Whole route, one page</button><button data-v="poster">Poster (several sheets)</button></div>
+      <div id="prPoster"><label for="prZoom">Scale: less detail ↔ more detail</label><input id="prZoom" type="range" min="11" max="18" step="1"><small id="prZoomTxt"></small></div>
+      <div class="seg" id="prBg"><button data-v="streets">Streets (grey)</button><button data-v="none">Route only</button></div>
+    </div>
+    <div class="pp-row"><div class="seg" id="prPaper"><button data-v="letter">Letter</button><button data-v="a4">A4</button></div><div class="seg" id="prOrient"><button data-v="portrait">Portrait</button><button data-v="landscape">Landscape</button></div></div>
+    <button id="prGo" class="pill go">🖨 Print</button>
+  </div>
+  <div id="prPages"></div>
 </div>
 
 <!-- review the calls on the map -->

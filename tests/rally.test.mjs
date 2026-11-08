@@ -634,3 +634,20 @@ test('on foot: plain walking calls, only real turns, no brake calls, survives a 
   const back = hashToSpec('#' + specToHash({ via: [[40.8, -73.9], [40.81, -73.91]], vehicle: 'foot' }));
   assert.equal(back.spec.vehicle, 'foot');
 });
+
+import { buildCues, planMapPages, renderPrint } from '../print.js';
+test('print: directions match the turns; poster prints only sheets the route crosses, labelled to fit together', () => {
+  const r = { ...gen, points: stage.points, loop: false, checkpoints: [], spec: { name: 'Test' } };
+  const cues = buildCues(r);
+  assert.equal(cues[0].kind, 'start'); assert.equal(cues.at(-1).kind, 'end');
+  assert.ok(cues.filter((c) => c.kind === 'turn').length >= 5);
+  assert.ok(cues.every((c, i) => !i || c.s >= cues[i - 1].s), 'in order along the route');
+  const fit = planMapPages(r, { mode: 'fit', paper: 'letter', orient: 'portrait' });
+  assert.equal(fit.pages.length, 1);
+  const a = planMapPages(r, { mode: 'poster', z: 16, paper: 'letter', orient: 'portrait' }), b = planMapPages(r, { mode: 'poster', z: 18, paper: 'letter', orient: 'portrait' });
+  assert.ok(b.pages.length > a.pages.length, 'more detail → more sheets');
+  assert.ok(b.pages.length < b.cols * b.rows, 'empty sheets are skipped');
+  assert.equal(new Set(b.pages.map((p) => p.label)).size, b.pages.length);
+  const out = renderPrint(r, { what: 'both', mode: 'poster', z: 17, paper: 'a4', orient: 'portrait', background: 'none', units: 'metric' }, { fmtDist: (m) => `${Math.round(m)} m` });
+  assert.ok(out.html.includes('Poster index') && out.html.includes('Then go') && /@page \{ size: A4 portrait/.test(out.pageCss));
+});

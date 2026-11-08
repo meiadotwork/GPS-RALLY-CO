@@ -6,6 +6,7 @@ import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace
 import { overpassQuery, buildGraph, planHunt } from './parking.js?v=20261107';
 import { finishRecording } from './record.js?v=20261107';
 import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js?v=20261107';
+import { renderPrint } from './print.js?v=20261108';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js?v=20261107';
 
 const $ = (id) => document.getElementById(id);
@@ -832,14 +833,17 @@ function glyph(n) {
   if (n.kind === 'recce' || n.kind === 'feature') return (g.innerHTML = '<text x="50" y="76" text-anchor="middle" font-size="72">!</text>');
   if (n.chicane) return (g.innerHTML = `<path d="M50 94 V74 L${n.dir === 'right' ? 72 : 28} 54 L${n.dir === 'right' ? 28 : 72} 32 L50 12"/>`);
   if (n.shape === 'roundabout') return (g.innerHTML = '<path d="M50 92 V68 M50 68 A16 16 0 1 1 66 52 L84 40"/>');
+  g.innerHTML = `<path d="${noteCurve(n)}"/>`;
+}
+function noteCurve(n) {
   const R = { H: 15, 1: 10, 2: 13, 3: 17, 4: 22, 5: 28, 6: 34, F: 44 };
   let r, th;
   if (n.kind === 'junction' || n.shape) {
     r = { hairpin: 15, acute: 6, square: 5, keep: 40 }[n.shape] ?? R[n.grade] ?? 28;
     th = n.shape === 'keep' ? 20 : Math.max(25, Math.min(n.angle, 180));
   }
-  else { r = R[n.grade]; th = Math.max(25, Math.min(n.angle, 180)); }
-  g.innerHTML = `<path d="${turnPath(n.dir === 'right', th, r)}"/>`;
+  else { r = R[n.grade] ?? 17; th = Math.max(25, Math.min(n.angle, 180)); }
+  return turnPath(n.dir === 'right', th, r);
 }
 // The turn's shape alone, no arrowhead: straight in, the curve (tight for a square or hairpin, wide for a 6),
 // a short straight out — scaled and centred to fill the box, so even a square turn reads at a glance.
@@ -2280,3 +2284,56 @@ $('apprDone').onclick = endApproachEdit;
 $('apprEdit').onclick = startApproachEdit;
 $('apprFrom').onclick = async () => { const here = await currentPos(); toast('Planning from where you are…', 3000); await refreshApproach({ from: here }); };
 $('apprMode').addEventListener('click', (e) => { const m = e.target.closest('button')?.dataset.m; if (!m || !S.appr || S.appr.mode === m) return; S.appr.mode = m; planApproach(); });
+
+// ---------- 🖨 print: map (one page or a poster of sheets) and/or directions, black & white ----------
+const PR = { what: 'both', mode: 'fit', z: 15, paper: settings.units === 'imperial' ? 'letter' : 'a4', orient: 'portrait', background: 'streets' };
+function openPrint() {
+  if (!S.route) return toast('Make or open a route first');
+  if (S.nav) stopNav();
+  document.querySelectorAll('.sheet').forEach((x) => (x.hidden = true));
+  const lat = S.route.points[0][0];
+  // a sensible poster scale to start with: about 1 in ≈ 250 m
+  if (!PR.zSet) PR.z = Math.max(11, Math.min(18, Math.round(Math.log2(156543.03392 * Math.cos(lat * Math.PI / 180) * 96 / 250))));
+  $('printView').hidden = false; document.body.classList.add('printing');
+  paintPrintControls(); renderPrintPreview();
+}
+function paintPrintControls() {
+  for (const [id, key] of [['prWhat', 'what'], ['prMode', 'mode'], ['prBg', 'background'], ['prPaper', 'paper'], ['prOrient', 'orient']])
+    $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === PR[key]));
+  const mapOn = PR.what !== 'dirs';
+  $('prMapOpts').hidden = !mapOn; $('prPoster').hidden = !(mapOn && PR.mode === 'poster');
+  $('prZoom').value = PR.z;
+}
+function renderPrintPreview() {
+  const out = renderPrint(S.route, { ...PR, units: settings.units }, { fmtDist, glyphPath: noteCurve });
+  $('prPageCss').textContent = out.pageCss;
+  if (out.tooMany) {
+    $('prPages').innerHTML = `<p class="pp-warn">That scale needs ${out.pages} sheets. The most is 60. Move the slider towards "less detail".</p>`;
+    $('prInfo').textContent = `${out.pages} sheets — too many`; $('prGo').disabled = true; return;
+  }
+  $('prPages').innerHTML = out.html; $('prGo').disabled = false;
+  const lat = S.route.points[0][0], mpi = 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** PR.z * 96;
+  const sc = settings.units === 'imperial' ? `1 in ≈ ${mpi * 3.28084 >= 5280 ? (mpi * 3.28084 / 5280).toFixed(1) + ' mi' : Math.round(mpi * 3.28084) + ' ft'}` : `1 cm ≈ ${Math.round(mpi / 2.54)} m`;
+  $('prZoomTxt').textContent = PR.mode === 'poster' ? `${sc} · ${out.pages} sheet${out.pages === 1 ? '' : 's'}` : '';
+  $('prInfo').textContent = `${out.count} page${out.count === 1 ? '' : 's'} to print`;
+  fitPreview();
+}
+function fitPreview() { // shrink the sheets to the screen for the preview; printing uses real size
+  const pg = $('prPages').querySelector('.pt-page'); if (!pg) return;
+  $('prPages').style.setProperty('--k', Math.min(1, (innerWidth - 24) / pg.offsetWidth).toFixed(3));
+}
+addEventListener('resize', () => { if (!$('printView').hidden) fitPreview(); });
+for (const [id, key] of [['prWhat', 'what'], ['prMode', 'mode'], ['prBg', 'background'], ['prPaper', 'paper'], ['prOrient', 'orient']])
+  $(id).addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (!v) return; PR[key] = v; paintPrintControls(); renderPrintPreview(); });
+$('prZoom').oninput = (e) => { PR.z = +e.target.value; PR.zSet = true; renderPrintPreview(); };
+$('prClose').onclick = () => { $('printView').hidden = true; document.body.classList.remove('printing'); $('prPages').innerHTML = ''; };
+$('prGo').onclick = async () => {
+  const imgs = [...$('prPages').querySelectorAll('img')];
+  if (imgs.some((i) => !i.complete)) {
+    $('prGo').disabled = true; $('prGo').textContent = 'Loading map…';
+    await Promise.race([Promise.all(imgs.map((i) => (i.complete ? 0 : new Promise((ok) => { i.onload = i.onerror = ok; })))), new Promise((ok) => setTimeout(ok, 20000))]);
+    $('prGo').disabled = false; $('prGo').textContent = '🖨 Print';
+  }
+  window.print();
+};
+$('btnPrint').onclick = openPrint;

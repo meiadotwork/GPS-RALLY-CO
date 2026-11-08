@@ -235,6 +235,22 @@ Pick a destination: **🅿️ Find parking here** on a place, on a long-press, o
 
 A phone records about one fix per second, so at speed tight corners are rounded a little. Record twisty sections at a moderate pace, and correct calls in 🔍 Review.
 
+## 🖨 Print (black & white)
+
+**Route page → 🖨 Print** opens the print screen, with a live preview of every sheet. Everything prints in simple black and white.
+- **What:** Map + directions, Map only, or Directions only.
+- **Whole route, one page:** the big picture on a single sheet.
+- **Poster (several sheets):** slide from less to more detail. The readout shows the scale ("1 cm ≈ 32 m") and how many sheets it takes.
+  - **Only sheets the route passes through are printed**, so even a long route across states doesn't waste paper.
+  - Each sheet is labelled (A1, B1, C2…), with tabs on its edges naming its neighbours (◀ A1, B1 ▶). Neighbours overlap slightly, so you can trim and line them up on a wall.
+  - A **poster index** page shows the layout.
+  - The limit is 60 sheets.
+- **Streets (grey)** or **Route only** (just the line: saves ink).
+- **Letter or A4**, portrait or landscape.
+- **The map:** a bold black route line with arrows showing the direction, S and F boxes, and **circled numbers at every turn**. It also has a scale bar and a north arrow.
+- **Directions:** a numbered list with a small turn drawing, what to do ("Turn left onto Main St", "Roundabout, take the 2nd exit"), **Then go** (distance since the previous line) and **Total**. In poster mode it also says which **sheet** each turn is on. The numbers match the circles on the map, so the paper works without the phone.
+- Map data © OpenStreetMap contributors, printed on every sheet. (`print.js`)
+
 ## 🚶 On foot
 
 **Route page → Vehicle → 🚶 On foot** routes along OpenStreetMap's walking network: **footpaths, paths through parks, pedestrian streets and stairs**, either way along one-way streets. Times are at walking pace, and it always takes the shortest way.

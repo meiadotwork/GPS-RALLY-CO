@@ -548,3 +548,64 @@ body.map-full #timerBtnA { bottom: calc(174px + var(--safe-b)); }
 .red-secs label { margin: 14px 0 0; }
 .red-secs input { width: 100%; margin-top: 6px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
 body.skin-term .red-secs input { border: 2px solid var(--t); border-radius: 0; background: #000; }
+
+/* ================= 🖨 print view (black & white) ================= */
+#printView { position: fixed; inset: 0; z-index: 3000; overflow: auto; background: #3a3a3a; color: #000; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-shadow: none; }
+body.printing::before, body.printing::after { display: none !important; }
+.pp-bar { position: sticky; top: 0; z-index: 2; background: #111; color: #fff; padding: calc(8px + var(--safe-t)) 12px 10px; display: grid; gap: 8px; }
+.pp-bar .seg { border-color: #555; border-radius: 10px; }
+.pp-bar .seg button { color: #fff; padding: 9px 6px; font: 600 13px system-ui, sans-serif; text-transform: none; letter-spacing: 0; background: transparent; border-radius: 0; }
+.pp-bar .seg button.on { background: #fff; color: #000; }
+.pp-top { display: flex; align-items: center; gap: 10px; } .pp-top b { font-size: 17px; } .pp-top span { flex: 1; color: #aaa; font-size: 13px; }
+.pp-top .pill { min-height: 36px; padding: 6px 12px; color: #fff; border-color: #555; background: transparent; border-radius: 10px; }
+.pp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#prPoster { display: grid; gap: 4px; font-size: 13px; color: #ccc; } #prPoster small { color: #fff; font-weight: 700; } #prPoster input { width: 100%; accent-color: #fff; }
+#prGo { background: #fff; color: #000; border: 0; border-radius: 10px; font: 800 16px system-ui, sans-serif; min-height: 46px; letter-spacing: 0; text-transform: none; }
+#prPages { padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pp-warn { color: #fff; background: #000; padding: 14px; border-radius: 10px; max-width: 400px; }
+.pt-page { zoom: var(--k, 1); background: #fff; color: #000; position: relative; overflow: hidden; box-shadow: 0 2px 10px #0008; display: flex; flex-direction: column; }
+.pt-head { height: 34px; flex: none; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid #000; font-size: 15px; padding: 0 2px; white-space: nowrap; overflow: hidden; }
+.pt-head b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; } .pt-head span { font-size: 13px; }
+.pt-map { position: relative; overflow: hidden; flex: none; background: #fff; }
+.pt-tile { position: absolute; filter: grayscale(1) contrast(.9) brightness(1.12); opacity: .62; max-width: none; }
+.pt-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.pt-halo { fill: none; stroke: #fff; stroke-width: 11; stroke-linejoin: round; stroke-linecap: round; }
+.pt-line { fill: none; stroke: #000; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; }
+.pt-chev { fill: #000; stroke: #fff; stroke-width: 1.5; stroke-linejoin: round; }
+.pt-n { fill: #fff; stroke: #000; stroke-width: 2.5; } .pt-nt { font: 800 11px system-ui, sans-serif; text-anchor: middle; fill: #000; }
+.pt-s { fill: #000; } .pt-st { font: 900 11px system-ui, sans-serif; text-anchor: middle; fill: #fff; }
+.pt-cell { fill: none; stroke: #000; stroke-width: 1.5; stroke-dasharray: 5 4; } .pt-cellt { font: 900 20px system-ui, sans-serif; text-anchor: middle; fill: #000; paint-order: stroke; stroke: #fff; stroke-width: 5; }
+.pt-nb { position: absolute; background: #000; color: #fff; font: 800 13px system-ui, sans-serif; padding: 3px 8px; }
+.pt-up { top: 4px; left: 50%; transform: translateX(-50%); } .pt-down { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.pt-left { left: 4px; top: 50%; transform: translateY(-50%); } .pt-right { right: 4px; top: 50%; transform: translateY(-50%); }
+.pt-scale { position: absolute; left: 8px; bottom: 30px; background: #fff; padding: 3px 6px; font: 700 12px system-ui, sans-serif; display: flex; align-items: center; gap: 6px; border: 1px solid #000; }
+.pt-scale i { display: block; height: 6px; border: 2px solid #000; border-top: 0; }
+.pt-north { position: absolute; right: 8px; bottom: 30px; background: #fff; border: 1px solid #000; padding: 2px 6px; font: 900 12px/1.1 system-ui, sans-serif; text-align: center; }
+.pt-foot { height: 18px; flex: none; font-size: 10px; color: #333; padding: 2px 2px 0; border-top: 1px solid #000; overflow: hidden; white-space: nowrap; }
+.pt-dirs .pt-foot { margin-top: auto; }
+.pt-hint { font-size: 12px; margin: 0; padding: 6px 2px; height: 34px; flex: none; overflow: hidden; }
+.pt-dirs .pt-hint { height: auto; }
+.pt-dirs { padding-bottom: 6px; }
+.pt-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 6px; }
+.pt-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #000; padding: 4px; }
+.pt-table td { border-bottom: 1px solid #999; padding: 5px 4px; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.pt-table tr { break-inside: avoid; }
+.pt-i { width: 28px; font-weight: 800; text-align: center; } .pt-g { width: 38px; } .pt-t { font-weight: 700; }
+.pt-d, .pt-c, .pt-p { white-space: nowrap; width: 70px; } .pt-p { width: 46px; font-weight: 800; text-align: center; }
+.pt-gl { width: 30px; height: 30px; display: block; } .pt-gl path { fill: none; stroke: #000; stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+.pt-sf { display: inline-block; background: #000; color: #fff; font-size: 11px; padding: 3px 4px; }
+tr.info .pt-t { font-weight: 400; font-style: italic; }
+@media print {
+  html, body { overflow: visible !important; height: auto !important; background: #fff !important; }
+  body > *:not(#printView) { display: none !important; }
+  #printView { position: static; overflow: visible; background: #fff; }
+  .pp-bar { display: none; }
+  #prPages { padding: 0; gap: 0; display: block; }
+  .pt-page { zoom: 1 !important; box-shadow: none; margin: 0; break-after: page; page-break-after: always; }
+  .pt-page:last-child { break-after: auto; page-break-after: auto; }
+  .pt-dirs { min-height: 0 !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+/* print sheets ignore the skin: plain, bold, readable type */
+#printView .pt-page, #printView .pt-page * { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; text-shadow: none !important; }
+#printView .pt-page b, #printView .pt-t, #printView .pt-i { font-weight: 800; }
