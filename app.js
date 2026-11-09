@@ -20,7 +20,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
@@ -733,6 +733,14 @@ function bindSeg(id, key) {
 }
 bindSeg('setAhead', 'callAhead');
 bindSeg('setSkin', 'skin');
+bindSeg('setMapColor', 'mapColor');
+// map colours: regular, matching the theme while driving (default), or matching it everywhere
+function applyMapColor() {
+  document.body.classList.toggle('mapc-drive', settings.mapColor !== 'regular' && settings.mapColor !== 'always');
+  document.body.classList.toggle('mapc-always', settings.mapColor === 'always');
+}
+$('setMapColor').addEventListener('click', () => { applyMapColor(); toast(settings.mapColor === 'regular' ? 'Map: regular colours, always' : settings.mapColor === 'always' ? 'Map: your theme colours, always' : 'Map: regular while planning, theme colours while driving'); });
+applyMapColor();
 $('setSkin').addEventListener('click', () => { applySkin(); if (S.route) drawRoute(false); });
 // Terminal colour: one phosphor colour, every shade derived from it; the black background never changes.
 const TERM_COLORS = [['#ff3b30', 'Red'], ['#39ff74', 'Green'], ['#ffb642', 'Amber'], ['#4da3ff', 'Blue'], ['#3ff7ff', 'Cyan'], ['#ff4fd8', 'Pink'], ['#b98cff', 'Purple'], ['#f2f2f2', 'White']];
@@ -758,6 +766,7 @@ function applyTermColor() {
 function setTermColor(c) { settings.termColor = c; saveSettings(); applyTermColor(); if (S.route) drawRoute(false); }
 function applySkin() {
   document.body.className = document.body.className.replace(/\bskin-\w+/g, '').trim();
+  if (typeof applyMapColor === 'function') applyMapColor();
   if (settings.skin && settings.skin !== 'classic') document.body.classList.add('skin-' + settings.skin);
   applyTermColor();
 }

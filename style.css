@@ -13,7 +13,7 @@ button, select, input { font: inherit; color: inherit; }
 #map { position: absolute; transform-origin: 50% 50%; transition: transform .6s linear; }
 #map.norot { transition: none; }
 .leaflet-container { background: #1a1d21; }
-body.nav:not(.map-full) .leaflet-tile-pane { filter: brightness(.75) contrast(1.1) saturate(.8); }
+body.mapc-drive.nav:not(.map-full) .leaflet-tile-pane, body.mapc-always .leaflet-tile-pane { filter: brightness(.75) contrast(1.1) saturate(.8); }
 
 #me { position: fixed; width: 40px; height: 40px; margin: -20px 0 0 -20px; z-index: 500; pointer-events: none; }
 #me svg { width: 100%; height: 100%; fill: var(--accent); stroke: #000; stroke-width: 2.5; filter: drop-shadow(0 2px 4px #000a); }
@@ -325,7 +325,7 @@ body.skin-lcd .pill.go { background: #d7dcc8; color: #1c2412; }
 body.skin-lcd .pill.go.stop { background: #b8402c; color: #fff; }
 body.skin-lcd #speed { font-family: 'VT323', monospace; font-size: 40px; color: #c3cda6; }
 body.skin-lcd #speedBox small { color: #8a917a; font-size: 14px; }
-body.skin-lcd.nav:not(.map-full) .leaflet-tile-pane { filter: grayscale(1) sepia(.6) hue-rotate(40deg) brightness(.5) contrast(1.3) !important; }
+body.skin-lcd.mapc-drive.nav:not(.map-full) .leaflet-tile-pane, body.skin-lcd.mapc-always .leaflet-tile-pane { filter: grayscale(1) sepia(.6) hue-rotate(40deg) brightness(.5) contrast(1.3) !important; }
 body.skin-lcd #fixBtn { border-radius: 3px; background: #1c2412; color: #c3cda6; border: 0; font-family: 'VT323', monospace; font-size: 18px; }
 
 /* ============ 3. TRIPMETER — rally gadget, amber LEDs in a black box ============ */
@@ -352,7 +352,7 @@ body.skin-trip .pill, body.skin-trip .round { border-radius: 6px; font-family: '
 body.skin-trip .pill.go { background: linear-gradient(#ffbf2a, #e08f00); color: #1a0f00; box-shadow: 0 3px 0 #7a4b00, inset 0 1px 0 #ffe08a; }
 body.skin-trip .pill.go.stop { background: linear-gradient(#ff4a2a, #c22a10); color: #fff; box-shadow: 0 3px 0 #5c1205, inset 0 1px 0 #ff9a85; }
 body.skin-trip #speed { color: #ffb000; font-size: 36px; }
-body.skin-trip.nav:not(.map-full) .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.45) contrast(1.4) sepia(.5) hue-rotate(-15deg) !important; }
+body.skin-trip.mapc-drive.nav:not(.map-full) .leaflet-tile-pane, body.skin-trip.mapc-always .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.45) contrast(1.4) sepia(.5) hue-rotate(-15deg) !important; }
 body.skin-trip #fixBtn { background: #000; color: #ffb000; border: 1px solid #3a2500; border-radius: 4px; font-family: 'Share Tech Mono', monospace; }
 
 /* ============ 4. DOT-MATRIX — red LED pit board / timing tower ============ */
@@ -483,7 +483,7 @@ body.skin-term #redTimer.last #redNum { color: var(--warn); text-shadow: 0 0 8px
 
 /* map: dark, tinted red */
 /* the dark tinted map is only for driving; planning, drawing, editing and the full-screen map show the normal map */
-body.skin-term.nav:not(.map-full) .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.58) contrast(1.25) sepia(1) hue-rotate(var(--t-hue, -40deg)) saturate(1.8) !important; }
+body.skin-term.mapc-drive.nav:not(.map-full) .leaflet-tile-pane, body.skin-term.mapc-always .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.58) contrast(1.25) sepia(1) hue-rotate(var(--t-hue, -40deg)) saturate(1.8) !important; }
 body.skin-term .leaflet-container { background: #050505; }
 body.skin-term #toast { border: 1px solid var(--dim); border-radius: 2px; background: #050505; color: var(--ink); }
 body.skin-term #countdown #cdNum { font-family: 'IBM VGA 8x16', 'Courier New', Courier, monospace; color: var(--ink); text-shadow: 0 0 20px rgba(var(--t-rgb), .6); }
