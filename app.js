@@ -140,7 +140,24 @@ async function fetchJSON(url, ms = 12000) {
   try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
   finally { clearTimeout(t); }
 }
+// No limit on stops or points: a long list is routed in chunks of up to 25 points (sharing their ends) and joined
+// back into one route, because the routing service and web addresses can only take so many points at once.
+const CHUNK = 25;
 async function osrmFetch(coords, startBearing, alternatives = false, noToll = false) {
+  if (coords.length > CHUNK) {
+    const parts = [];
+    for (let i = 0; i < coords.length - 1; i += CHUNK - 1) parts.push(coords.slice(i, i + CHUNK));
+    const res = [];
+    for (let k = 0; k < parts.length; k++) res.push(await osrmFetchOne(parts[k], k ? null : startBearing, false, noToll));
+    const rs = res.map((j) => j.routes[0]), geo = [];
+    rs.forEach((r, k) => geo.push(...(k ? r.geometry.coordinates.slice(1) : r.geometry.coordinates)));
+    const route = { distance: rs.reduce((a, r) => a + r.distance, 0), duration: rs.reduce((a, r) => a + r.duration, 0), weight: rs.reduce((a, r) => a + (r.weight || 0), 0),
+      legs: rs.flatMap((r) => r.legs), geometry: { type: 'LineString', coordinates: geo } };
+    return { code: 'Ok', routes: [route], waypoints: res.flatMap((j, k) => (k ? j.waypoints.slice(1) : j.waypoints)) };
+  }
+  return osrmFetchOne(coords, startBearing, alternatives, noToll);
+}
+async function osrmFetchOne(coords, startBearing, alternatives = false, noToll = false) {
   const pts = coords.map((c) => `${c[1].toFixed(6)},${c[0].toFixed(6)}`).join(';');
   let url = `${ROUTERS[VEHICLE] || OSRM}${pts}?overview=full&geometries=geojson&steps=true&continue_straight=true`;
   if (alternatives) url += '&alternatives=3';
@@ -2513,7 +2530,7 @@ function viaOf(spec, loop, route = null) {
   if (!spec.raw) v = spec.via.map((p) => p.slice());
   else { // a recorded / drawn track: points along it, routed on the same roads
     const pts = spec.points, total = route?.total || pts.reduce((a, p, i) => a + (i ? segLen(pts[i - 1], p) : 0), 0);
-    const n = Math.max(2, Math.min(40, Math.round(total / 250)));
+    const n = Math.max(2, Math.round(total / 250)); // about one point every 250 m, however long
     v = []; for (let i = 0; i < n; i++) v.push(pts[Math.round(i * (pts.length - 1) / (n - 1))].slice());
   }
   if (loop) v.push(v[0].slice()); // a lap: back to its start before carrying on

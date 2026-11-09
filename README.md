@@ -298,7 +298,7 @@ Open any route (for example from ★ My routes), then go to the route page → *
 - **another saved route** (its path is added after this one; a lap goes round and back to its start first)
 - **a spot on the map**
 
-The current end becomes a **named stop**. While driving you hear "Stop, Gas station" and see "✓ Stop: Gas station", and the finish unlocks after the last stop. Repeat to chain as many as you like ("Gas station → Work → Gym"), then **☆ save** it as its own route. Stop names are kept in saved routes and share links. A recorded track that's chained becomes ~40 points along it, routed on the same roads.
+The current end becomes a **named stop**. While driving you hear "Stop, Gas station" and see "✓ Stop: Gas station", and the finish unlocks after the last stop. There's **no limit** on stops or points: long lists are routed in chunks of 25 points and joined into one route. Repeat to chain as many as you like ("Gas station → Work → Gym"), then **☆ save** it as its own route. Stop names are kept in saved routes and share links. A recorded track that's chained becomes ~40 points along it, routed on the same roads.
 
 ## ⛽ Gas cost
 
