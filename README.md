@@ -332,7 +332,7 @@ By default the calls **don't say the distance to the next call** ("left 4, 200, 
 - **Tripmeter**: a black box with glowing amber digits, like a rally instrument.
 - **Classic**: the original look.
 
-The route line follows the skin's colour. **Settings → Map colours** decides the map itself: **Regular** (the normal map, always), **Theme while driving** (default: normal while planning, drawing, editing and in the full-screen map, tinted to your skin's colour on the driving screen), or **Theme always** (tinted everywhere). Anyone who had the retired Arcade or Dot-matrix skin is moved to Terminal.
+The route line follows the skin's colour. **Settings → Map colours** decides the map itself: **Regular** (the normal map, always), **Theme while driving** (default: normal while planning, drawing, editing and in the full-screen map, tinted to your skin's colour on the driving screen), **Theme always** (tinted everywhere), or **Track only** (on the driving screen the map disappears: pure black with just your route, your position and the call dots; planning, drawing and the full-screen map still show the normal map). Anyone who had the retired Arcade or Dot-matrix skin is moved to Terminal.
 
 ## 🚗 Liaison: getting to the start
 

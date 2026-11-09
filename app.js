@@ -791,10 +791,11 @@ bindSeg('setSkin', 'skin');
 bindSeg('setMapColor', 'mapColor');
 // map colours: regular, matching the theme while driving (default), or matching it everywhere
 function applyMapColor() {
-  document.body.classList.toggle('mapc-drive', settings.mapColor !== 'regular' && settings.mapColor !== 'always');
+  document.body.classList.toggle('mapc-drive', !['regular', 'always', 'track'].includes(settings.mapColor));
   document.body.classList.toggle('mapc-always', settings.mapColor === 'always');
+  document.body.classList.toggle('mapc-track', settings.mapColor === 'track'); // driving: only the route on black
 }
-$('setMapColor').addEventListener('click', () => { applyMapColor(); toast(settings.mapColor === 'regular' ? 'Map: regular colours, always' : settings.mapColor === 'always' ? 'Map: your theme colours, always' : 'Map: regular while planning, theme colours while driving'); });
+$('setMapColor').addEventListener('click', () => { applyMapColor(); toast(settings.mapColor === 'regular' ? 'Map: regular colours, always' : settings.mapColor === 'always' ? 'Map: your theme colours, always' : settings.mapColor === 'track' ? 'Map: only your route on black while driving (normal map while planning)' : 'Map: regular while planning, theme colours while driving'); });
 applyMapColor();
 $('setSkin').addEventListener('click', () => { applySkin(); if (S.route) drawRoute(false); });
 // Terminal colour: one phosphor colour, every shade derived from it; the black background never changes.

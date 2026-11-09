@@ -644,3 +644,8 @@ body.skin-term .gas-grid input { border: 2px solid var(--t); border-radius: 0; b
 .next-list button { width: 100%; text-align: left; border: 1px solid var(--line); background: transparent; border-radius: 12px; padding: 12px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
 .next-list small { color: var(--dim); font-weight: 400; }
 body.skin-term .next-list button { border: 2px solid var(--t-dim); border-radius: 0; color: var(--t); }
+
+/* Map colours → Track only: on the driving screen the map disappears; just your route (and you) on black */
+body.mapc-track.nav:not(.map-full) .leaflet-tile-pane { opacity: 0 !important; }
+body.mapc-track.nav:not(.map-full) .leaflet-container, body.mapc-track.nav:not(.map-full) #mapwrap { background: #000 !important; }
+#setMapColor { flex-wrap: wrap; } #setMapColor button { min-width: 50%; }
