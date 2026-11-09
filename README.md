@@ -291,6 +291,15 @@ Two **RED** buttons on the right of the screen, **35** and **70** seconds by def
 - **−5 / +5** adjust it, **↻ 35 / ↻ 70** start again from either time, and **✕ Close** stops it.
 - **Settings:** set the seconds for each button (5–600), or hide the buttons.
 
+## ➕ Routes with several destinations
+
+Open any route (for example from ★ My routes), then go to the route page → **➕ Continue to…** and pick what comes next:
+- **one of your places** (Work, Home…)
+- **another saved route** (its path is added after this one; a lap goes round and back to its start first)
+- **a spot on the map**
+
+The current end becomes a **named stop**. While driving you hear "Stop, Gas station" and see "✓ Stop: Gas station", and the finish unlocks after the last stop. Repeat to chain as many as you like ("Gas station → Work → Gym"), then **☆ save** it as its own route. Stop names are kept in saved routes and share links. A recorded track that's chained becomes ~40 points along it, routed on the same roads.
+
 ## ⛽ Gas cost
 
 **Settings → ⛽ Gas cost → Show it** (off by default). Enter your car's efficiency in **mpg**, **km/L** or **L/100 km**, the **gas price** (per gallon with mpg, per litre otherwise) and your currency symbol. Switching units converts the numbers, so it stays the same car and the same price. (`fuel.js`)

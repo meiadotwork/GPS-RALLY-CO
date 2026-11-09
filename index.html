@@ -102,6 +102,7 @@
       <button id="btnNotes" class="pill ghost">Stage notes</button>
       <button id="btnReview" class="pill ghost">🔍 Review notes on map</button>
       <button id="btnBoard2" class="pill ghost">🏆 Leaderboard</button>
+      <button id="btnContinue" class="pill ghost">➕ Continue to…</button>
       <button id="btnPrint" class="pill ghost">🖨 Print</button>
     </div>
     <div class="sim-box">
@@ -379,6 +380,15 @@
     <button id="recceSave" class="pill go">Save</button>
     <button id="recceClear" class="pill danger" hidden>Remove recce here</button>
   </div>
+</section>
+
+<!-- continue to: chain another destination or saved route -->
+<section id="nextSheet" class="sheet tall" hidden>
+  <header><h2>➕ Continue to…</h2><button class="close" data-close>✕</button></header>
+  <p class="fine">Where should this route go next? The current end becomes a stop on the way.</p>
+  <h3 class="sub">My places</h3><ul id="nextPlaces" class="next-list"></ul>
+  <h3 class="sub">My routes</h3><ul id="nextRoutes" class="next-list"></ul>
+  <div class="row"><button id="nextMap" class="pill ghost">📍 Tap a spot on the map</button></div>
 </section>
 
 <!-- my places -->

@@ -51,6 +51,7 @@ export function specToHash(spec, { loop = false, recce = [], name = '' } = {}) {
   if (spec.recorded) q.set('rec', '1');
   if (spec.planned) q.set('planned', '1');
   if (name) q.set('name', name.slice(0, 80));
+  if (spec.stops?.length) q.set('st', b64u(JSON.stringify(spec.stops.map((s) => [+s.ll[0].toFixed(5), +s.ll[1].toFixed(5), s.name || '']))));
   if (recce.length) q.set('rc', b64u(JSON.stringify(recce.map((r) => [+r.lat.toFixed(5), +r.lon.toFixed(5), r.words.join('|')]))));
   return q.toString();
 }
@@ -68,6 +69,7 @@ export function hashToSpec(hash) {
   if (q.get('bike') === '1') spec.vehicle = 'bike';
   if (q.get('foot') === '1') spec.vehicle = 'foot';
   if (q.get('rec') === '1') spec.recorded = true;
+  try { if (q.get('st')) spec.stops = JSON.parse(unb64u(q.get('st'))).map(([a, b, name]) => ({ ll: [a, b], name })); } catch {}
   if (q.get('notoll') === '1' || spec.mode === 'notoll') { spec.noToll = true; if (spec.mode === 'notoll') spec.mode = 'fastest'; }
   let recce = [];
   try {

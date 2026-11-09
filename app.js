@@ -332,7 +332,8 @@ function setRoute(r, { fit = true } = {}) {
   S.route.waypoints = wps.map((ll, i) => ({ ll, s: !gen.loop && i === wps.length - 1 ? gen.total : ws[i] })); // the destination is the END
   // your checkpoints (not the app's hidden pins): the finish only unlocks once you've been through them all
   const user = r.spec?.raw || r.spec?.parking ? [] : (r.spec?.base || r.spec?.via || []), mids = gen.loop ? [] : user.slice(1, -1), cs = along(mids);
-  S.route.checkpoints = mids.map((ll, i) => ({ n: i + 1, ll, s: cs[i] }));
+  const stops = r.spec?.stops || [];
+  S.route.checkpoints = mids.map((ll, i) => ({ n: i + 1, ll, s: cs[i], name: stops.find((st) => segLen(st.ll, ll) < 30)?.name || '' }));
   if (S.nav) {
     // mid-drive (reroute, or calls changed): keep what you've passed, re-place the rest on the new route
     const old = S.cps || [];
@@ -613,6 +614,7 @@ map.on('click', (e) => {
   if (S.mode === 'edit') return editAppend(ll);
   if (S.mode === 'review') return openAdd(ll); // tap the route where a call is missing
   if (S.mode === 'approach') return apprAdd(ll);
+  if (S.mode === 'pickNext') { S.mode = 'idle'; return continueTo({ ll, name: 'Map point' }); }
   if (S.mode === 'pick') { S.mode = 'idle'; routeTo(ll); }
   else if (S.mode === 'draw') { S.draw.push(ll); renderDraw(); }
 });
@@ -950,14 +952,15 @@ function onFix(f) {
       c.passed = true;
       const k = S.cps.filter((x) => x.passed).length;
       beep(990, 0.12); setTimeout(() => beep(1320, 0.15), 140);
-      toast(`✓ Checkpoint ${c.n} · ${k}/${S.cps.length}` + (k === S.cps.length ? ' — finish unlocked' : ''), 2500);
+      if (c.name) speak(`Stop, ${c.name}.`);
+      toast(`✓ ${c.name ? 'Stop: ' + c.name : 'Checkpoint ' + c.n} · ${k}/${S.cps.length}` + (k === S.cps.length ? ' — finish unlocked' : ''), 2500);
     }
     const missed = S.cps.filter((c) => !c.passed);
     S.race.locked = missed.length > 0;
     if (S.race.locked && sNow >= S.route.total - 25 && !S.lockWarned) {
       S.lockWarned = true;
       const list = missed.map((c) => c.n).join(', ');
-      speak(`Finish locked. Missed checkpoint ${list}.`, true);
+      speak(`Finish locked. Missed ${missed.some((c) => c.name) ? missed.map((c) => c.name || 'checkpoint ' + c.n).join(', ') : 'checkpoint ' + list}.`, true);
       toast(`🔒 Finish locked — missed checkpoint ${list}. Drive through it, then come back to the finish (or tap Stop).`, 8000);
     }
   }
@@ -2501,3 +2504,53 @@ for (const [id, key, min, max] of [['gasEff', 'gasEff', 0.5, 200], ['gasPrice', 
   $(id).onchange = (e) => { const v = Math.max(min, Math.min(max, +e.target.value || 0)); settings[key] = v; e.target.value = v; saveSettings(); paintGas(); };
 $('gasCur').onchange = (e) => { settings.gasCur = e.target.value.trim().slice(0, 3); saveSettings(); paintGas(); };
 paintGas();
+
+// ---------- ➕ continue to…: chain another destination or saved route onto this one ----------
+// The current route's end becomes a named stop (a checkpoint, announced by name), then the route carries on
+// to the place / along the saved route / to a map point. Save it with ☆ as a route with several destinations.
+function viaOf(spec, loop, route = null) {
+  let v;
+  if (!spec.raw) v = spec.via.map((p) => p.slice());
+  else { // a recorded / drawn track: points along it, routed on the same roads
+    const pts = spec.points, total = route?.total || pts.reduce((a, p, i) => a + (i ? segLen(pts[i - 1], p) : 0), 0);
+    const n = Math.max(2, Math.min(40, Math.round(total / 250)));
+    v = []; for (let i = 0; i < n; i++) v.push(pts[Math.round(i * (pts.length - 1) / (n - 1))].slice());
+  }
+  if (loop) v.push(v[0].slice()); // a lap: back to its start before carrying on
+  return v;
+}
+function openContinue() {
+  if (!S.route?.spec) return;
+  const places = myPlaces(), routes = myRoutes().filter((r) => r.id !== S.route.spec.savedId);
+  $('nextPlaces').innerHTML = places.length ? places.map((p) => `<li><button data-place="${p.id}">${p.icon} ${esc(p.name)}</button></li>`).join('') : '<li class="fine">No saved places yet.</li>';
+  $('nextRoutes').innerHTML = routes.length ? routes.slice().sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }))
+    .map((r) => `<li><button data-route="${r.id}">${r.loop ? '⟳ ' : ''}${esc(r.name)} <small>${fmtDist(r.dist)}</small></button></li>`).join('') : '<li class="fine">No other saved routes yet.</li>';
+  openSheet('nextSheet');
+}
+async function continueTo(next) {
+  const R = S.route; if (!R?.spec) return;
+  $('nextSheet').hidden = true;
+  let add, addName, addStops = [];
+  if (next.place) { add = [[next.place.lat, next.place.lon]]; addName = next.place.name; }
+  else if (next.route) {
+    const sh = hashToSpec(next.route.hash);
+    if (!sh || sh.spec.demo) return toast('That route can’t be added');
+    add = viaOf(sh.spec, sh.loop); addName = next.route.name; addStops = sh.spec.stops || [];
+  } else { add = [next.ll]; addName = next.name; }
+  const cur = viaOf(R.spec, R.loop, R);
+  const here = R.spec.stopName || R.spec.name?.split(' → ').at(-1) || (R.loop ? 'Lap' : 'Stop');
+  const stops = [...(R.spec.stops || []), { ll: cur.at(-1), name: here }, ...addStops];
+  if (segLen(cur.at(-1), add[0]) < 15) add.shift(); // don't stop twice at the same spot
+  const spec = { via: [...cur, ...add], name: `${R.spec.name || 'Route'} → ${addName}`.slice(0, 80), stopName: addName, stops,
+    vehicle: R.spec.vehicle, noToll: !!R.spec.noToll };
+  toast(`Adding ${addName}…`, 6000);
+  try {
+    S.loop = false; paintLoop();
+    await buildRoute(spec, false);
+    toast(`${spec.name} · ${fmtDist(S.route.total)} — ${stops.length} stop${stops.length > 1 ? 's' : ''} on the way. Tap ☆ to save it.`, 6000);
+  } catch (err) { toast('Couldn’t add it: ' + err.message); }
+}
+$('btnContinue').onclick = openContinue;
+$('nextPlaces').addEventListener('click', (e) => { const id = e.target.closest('button')?.dataset.place; const p = id && myPlaces().find((x) => x.id === id); if (p) continueTo({ place: p }); });
+$('nextRoutes').addEventListener('click', (e) => { const id = e.target.closest('button')?.dataset.route; const r = id && myRoutes().find((x) => x.id === id); if (r) continueTo({ route: r }); });
+$('nextMap').onclick = () => { $('nextSheet').hidden = true; S.mode = 'pickNext'; toast('Tap the map where the route should go next', 4000); };

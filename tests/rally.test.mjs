@@ -679,3 +679,9 @@ test('gas cost: mpg, km/L and L/100 km agree; money is formatted and said', () =
   assert.equal(fmtMoney(3.204, '$'), '$3.20'); assert.equal(fmtMoney(14.4, 'R$'), 'R$14.40');
   assert.equal(sayMoney(2.85, '$'), 'about 2 dollars 85'); assert.equal(sayMoney(0.4, '$'), 'about 40 cents');
 });
+
+test('a route with several destinations keeps its named stops in a share link', () => {
+  const spec = { via: [[40.7, -73.99], [40.71, -73.98], [40.72, -73.97]], stops: [{ ll: [40.71, -73.98], name: 'Gas station' }] };
+  const back = hashToSpec('#' + specToHash(spec, { name: 'Home → Gas station → Work' }));
+  assert.equal(back.spec.stops.length, 1); assert.equal(back.spec.stops[0].name, 'Gas station'); assert.deepEqual(back.spec.stops[0].ll, [40.71, -73.98]);
+});

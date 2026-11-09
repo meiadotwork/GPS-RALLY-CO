@@ -639,3 +639,8 @@ body.skin-term #reccePreview, body.skin-term #recceSheet .row { background: #000
 .gas-grid label { margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
 .gas-grid input { width: 100%; padding: 12px 8px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
 body.skin-term .gas-grid input { border: 2px solid var(--t); border-radius: 0; background: #000; }
+
+.next-list { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 6px; }
+.next-list button { width: 100%; text-align: left; border: 1px solid var(--line); background: transparent; border-radius: 12px; padding: 12px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
+.next-list small { color: var(--dim); font-weight: 400; }
+body.skin-term .next-list button { border: 2px solid var(--t-dim); border-radius: 0; color: var(--t); }
