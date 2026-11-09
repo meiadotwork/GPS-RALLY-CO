@@ -92,7 +92,7 @@ function tilesHtml(zi, sc, ox, oy, w, h, background) {
     if (ty < 0 || ty >= n) continue;
     for (let tx = Math.floor(ox / T); tx * T < ox + w; tx++) {
       const wx = ((tx % n) + n) % n;
-      out.push(`<img class="pt-tile" src="${TILE}${zi}/${wx}/${ty}.png" style="left:${(tx * T - ox).toFixed(1)}px;top:${(ty * T - oy).toFixed(1)}px;width:${T.toFixed(1)}px;height:${T.toFixed(1)}px" alt="">`);
+      out.push(`<img class="pt-tile" src="${TILE}${zi}/${wx}/${ty}.png" style="left:${(tx * T - ox).toFixed(1)}px;top:${(ty * T - oy).toFixed(1)}px;width:${T.toFixed(1)}px;height:${T.toFixed(1)}px" alt="" crossorigin="anonymous">`);
     }
   }
   return out.join('');
@@ -129,12 +129,13 @@ function scaleBar(lat, zf, units) {
 }
 
 /** The whole printable document: returns { html, pageCss, count, tooMany } */
-export function renderPrint(route, opts, { fmtDist, glyphPath }) {
+export function renderPrint(route, opts, { fmtDist, glyphPath, qr = null }) {
   const { what, mode, z, paper, orient, background, units } = opts;
   const cues = buildCues(route), name = route.spec?.name || (route.loop ? 'Circuit' : 'Route');
   const lat0 = route.points[0][0];
   const parts = []; let count = 0, tooMany = false, plan = null;
   const head = (right) => `<div class="pt-head"><b>${esc(name)}</b><span>${esc(right)}</span></div>`;
+  const qrBox = (cls) => (qr ? `<div class="pt-qr ${cls}">${qr}<span>Scan to open this route</span></div>` : '');
   const footer = `<div class="pt-foot">Map data © OpenStreetMap contributors · printed ${new Date().toLocaleDateString()}</div>`;
   if (what !== 'dirs') {
     plan = planMapPages(route, { mode, z, paper, orient });
@@ -146,7 +147,7 @@ export function renderPrint(route, opts, { fmtDist, glyphPath }) {
         const fit = planMapPages(route, { mode: 'fit', paper, orient, shrink: HINT }), pg = fit.pages[0], kz = 2 ** (fit.zf - plan.zf);
         const rects = plan.pages.map((p) => { const x = (p.ox * kz - pg.ox * 1), y = (p.oy * kz - pg.oy); const w = box.w * kz, h = mapH * kz;
           return `<g><rect class="pt-cell" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(w).toFixed(1)}" height="${(h).toFixed(1)}"/><text class="pt-cellt" x="${(x + w / 2).toFixed(1)}" y="${(y + h / 2 + 6).toFixed(1)}">${p.label}</text></g>`; }).join('');
-        parts.push(`<section class="pt-page" style="width:${box.w}px;height:${box.h}px">${head(`Poster index · ${plan.pages.length} sheets · ${sb.scale}`)}<div class="pt-map" style="height:${mapH - HINT}px">${overlaySvg(route, cues, fit, pg, box.w, mapH - HINT, { numbers: false })}<svg class="pt-svg" width="${box.w}" height="${mapH - HINT}">${rects}</svg></div><div class="pt-hint">Lay the sheets out like this grid. Neighbouring sheets overlap by a few millimetres: trim one edge and line up the route.</div>${footer}</section>`);
+        parts.push(`<section class="pt-page" style="width:${box.w}px;height:${box.h}px">${head(`Poster index · ${plan.pages.length} sheets · ${sb.scale}`)}<div class="pt-map" style="height:${mapH - HINT}px">${overlaySvg(route, cues, fit, pg, box.w, mapH - HINT, { numbers: false })}<svg class="pt-svg" width="${box.w}" height="${mapH - HINT}">${rects}</svg>${qrBox('pt-qr-map')}</div><div class="pt-hint">Lay the sheets out like this grid. Neighbouring sheets overlap by a few millimetres: trim one edge and line up the route.</div>${footer}</section>`);
         count++;
       }
       for (const p of plan.pages) {
@@ -156,7 +157,7 @@ export function renderPrint(route, opts, { fmtDist, glyphPath }) {
         ].filter(Boolean).join('') : '';
         parts.push(`<section class="pt-page" style="width:${box.w}px;height:${box.h}px">${head(`${p.label ? 'Sheet ' + p.label + ' · ' : ''}${fmtDist(route.total)}${route.loop ? ' lap' : ''} · ${sb.scale}`)}
           <div class="pt-map ${background === 'none' ? 'blank' : ''}" style="height:${mapH}px">${tilesHtml(plan.zi, plan.sc, p.ox, p.oy, box.w, mapH, background)}${overlaySvg(route, cues, plan, p, box.w, mapH)}${nb}
-          <div class="pt-scale"><i style="width:${sb.px.toFixed(0)}px"></i>${sb.label}</div><div class="pt-north">N<br>▲</div></div>${footer}</section>`);
+          <div class="pt-scale"><i style="width:${sb.px.toFixed(0)}px"></i>${sb.label}</div><div class="pt-north">N<br>▲</div>${mode === 'fit' || plan.pages.length === 1 ? qrBox('pt-qr-map') : ''}</div>${footer}</section>`);
         count++;
       }
     }
@@ -170,6 +171,7 @@ export function renderPrint(route, opts, { fmtDist, glyphPath }) {
     }).join('');
     const sheetCol = plan && mode === 'poster' && plan.pages.length > 1;
     parts.push(`<section class="pt-page pt-dirs" style="width:${box.w}px;min-height:${box.h}px">${head(`Directions · ${fmtDist(route.total)}${route.loop ? ' per lap' : ''} · ${cues.length - 2} turn${cues.length === 3 ? '' : 's'}`)}
+      <div class="pt-dirtop"><div class="pt-sum"><b>${esc(name)}</b><span>${route.loop ? 'Circuit' : 'Route'} · ${fmtDist(route.total)}${route.loop ? ' per lap' : ''} · ${cues.length - 2} turn${cues.length === 3 ? '' : 's'}${(route.checkpoints || []).length ? ` · ${route.checkpoints.length} checkpoint${route.checkpoints.length > 1 ? 's' : ''}` : ''}</span><span>Follow the lines in order. Each "Then go" distance is counted from the line above.</span></div>${qrBox('pt-qr-dirs')}</div>
       <table class="pt-table"><thead><tr><th>#</th><th></th><th>What to do</th><th>Then go</th><th>Total</th>${sheetCol ? '<th>Sheet</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>
       <p class="pt-hint">"Then go" is the distance from the previous line to this one. Numbers match the circled numbers on the map.${route.loop ? ' On a circuit, repeat from the top for each lap.' : ''}</p>${footer}</section>`);
     count += Math.max(1, Math.ceil(cues.length / 26));

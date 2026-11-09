@@ -249,6 +249,8 @@ A phone records about one fix per second, so at speed tight corners are rounded 
 - **Letter or A4**, portrait or landscape.
 - **The map:** a bold black route line with arrows showing the direction, S and F boxes, and **circled numbers at every turn**. It also has a scale bar and a north arrow.
 - **Directions:** a numbered list with a small turn drawing, what to do ("Turn left onto Main St", "Roundabout, take the 2nd exit"), **Then go** (distance since the previous line) and **Total**. In poster mode it also says which **sheet** each turn is on. The numbers match the circles on the map, so the paper works without the phone.
+- **QR code of the route** (on by default) on the one-page map, the poster index and the directions. Scanning it with any phone opens that exact route in the app. Long recorded tracks are encoded as ~40 points along them (routed on the same roads), so the code stays small enough to scan from paper.
+- **🖼 Save as PNG**: every sheet as an image, the same black and white look as the printout. On iPhone it opens the share sheet (Save Images, AirDrop, Messages). Elsewhere the images download.
 - Map data © OpenStreetMap contributors, printed on every sheet. (`print.js`)
 
 ## 🚶 On foot

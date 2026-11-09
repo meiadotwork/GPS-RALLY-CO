@@ -4,7 +4,7 @@ import { buildStage } from './sample-route.js?v=20261107';
 import { specToHash, hashToSpec } from './share.js?v=20261107';
 import { Race, fmtRaceTime, routeSvgPath, ghostDelta, ghostDistAt, compressTrace } from './race.js?v=20261107';
 import { overpassQuery, buildGraph, planHunt } from './parking.js?v=20261107';
-import { finishRecording } from './record.js?v=20261107';
+import { finishRecording, simplifyTrack } from './record.js?v=20261107';
 import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js?v=20261107';
 import { renderPrint } from './print.js?v=20261108';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js?v=20261107';
@@ -2343,6 +2343,7 @@ function openPrint() {
   if (!PR.zSet) PR.z = Math.max(11, Math.min(18, Math.round(Math.log2(156543.03392 * Math.cos(lat * Math.PI / 180) * 96 / 250))));
   $('printView').hidden = false; document.body.classList.add('printing');
   paintPrintControls(); renderPrintPreview();
+  if (PR.qr && !window.qrcode) loadScript(QR_LIB).then(renderPrintPreview).catch(() => toast('QR code unavailable (offline?)'));
 }
 function paintPrintControls() {
   for (const [id, key] of [['prWhat', 'what'], ['prMode', 'mode'], ['prBg', 'background'], ['prPaper', 'paper'], ['prOrient', 'orient']])
@@ -2352,7 +2353,7 @@ function paintPrintControls() {
   $('prZoom').value = PR.z;
 }
 function renderPrintPreview() {
-  const out = renderPrint(S.route, { ...PR, units: settings.units }, { fmtDist, glyphPath: noteCurve });
+  const out = renderPrint(S.route, { ...PR, units: settings.units }, { fmtDist, glyphPath: noteCurve, qr: PR.qr ? routeQr() : null });
   $('prPageCss').textContent = out.pageCss;
   if (out.tooMany) {
     $('prPages').innerHTML = `<p class="pp-warn">That scale needs ${out.pages} sheets. The most is 60. Move the slider towards "less detail".</p>`;
@@ -2389,3 +2390,70 @@ $('btnPrint').onclick = openPrint;
 try { const m = sessionStorage.getItem('codriver.msg'); if (m) { sessionStorage.removeItem('codriver.msg'); setTimeout(() => toast(m, 6000), 600); } } catch {}
 
 $('routeSort').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (!v) return; settings.routeSort = v; saveSettings(); renderMyRoutes(); });
+
+// ---------- 🔳 QR code of the route (on the printed sheets) and 🖼 Save as PNG ----------
+const QR_LIB = 'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';
+const PNG_LIB = 'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js';
+const loadScript = (src) => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+PR.qr = true;
+// the share link for the QR — kept short so the code is easy to scan from paper (under ~900 characters).
+// A long recorded or drawn track becomes ~40 points along it; opening the link routes through them, on the same roads.
+function qrLink() {
+  const R = S.route, base = location.origin + location.pathname + '#', name = R.spec?.name || '';
+  const link = (spec) => base + specToHash(spec, { loop: R.loop, name });
+  let url = link(R.spec);
+  if (url.length > 900 && R.spec?.raw) {
+    const pts = R.spec.points, n = Math.max(2, Math.min(40, Math.round(R.total / 250)));
+    const via = []; for (let i = 0; i < n; i++) via.push(pts[Math.round(i * (pts.length - 1) / (n - 1))]);
+    url = link({ via, vehicle: R.spec.vehicle, noToll: R.spec.noToll });
+  }
+  return url.length <= 1600 ? url : null;
+}
+function routeQr() {
+  if (!window.qrcode) return null;
+  const url = qrLink(); if (!url) return null;
+  try { const q = window.qrcode(0, url.length > 600 ? 'L' : 'M'); q.addData(url); q.make(); return q.createSvgTag({ cellSize: 3, margin: 0, scalable: true }); } catch { return null; }
+}
+$('prQr').onchange = (e) => { PR.qr = e.target.checked; if (PR.qr && !window.qrcode) loadScript(QR_LIB).then(renderPrintPreview).catch(() => toast('QR code unavailable (offline?)')); else renderPrintPreview(); };
+$('prPng').onclick = async () => {
+  const btn = $('prPng'), old = btn.textContent; btn.disabled = true; btn.textContent = 'Making images…';
+  try {
+    if (!window.html2canvas) await loadScript(PNG_LIB);
+    const imgs = [...$('prPages').querySelectorAll('img')];
+    await Promise.race([Promise.all(imgs.map((i) => (i.complete ? 0 : new Promise((ok) => { i.onload = i.onerror = ok; })))), new Promise((ok) => setTimeout(ok, 20000))]);
+    const k = $('prPages').style.getPropertyValue('--k'); $('prPages').style.setProperty('--k', 1); // real size, not the preview size
+    // the PNG maker ignores CSS filters: make the map tiles light grey by hand (the same look as the printout)
+    const swaps = [], cache = new Map();
+    for (const im of $('prPages').querySelectorAll('img.pt-tile')) {
+      if (!im.naturalWidth) continue;
+      let url = cache.get(im.src);
+      if (!url) {
+        try {
+          const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+          const g = c.getContext('2d'); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, c.width, c.height), a = d.data;
+          for (let j = 0; j < a.length; j += 4) { const y = 0.3 * a[j] + 0.59 * a[j + 1] + 0.11 * a[j + 2], v = 255 - (255 - Math.min(255, y * 1.12)) * 0.62; a[j] = a[j + 1] = a[j + 2] = v; a[j + 3] = 255; }
+          g.putImageData(d, 0, 0); url = c.toDataURL('image/png'); cache.set(im.src, url);
+        } catch { continue; } // a tile that can't be read stays as it is
+      }
+      swaps.push([im, im.src, im.style.filter, im.style.opacity]); im.src = url; im.style.filter = 'none'; im.style.opacity = '1';
+    }
+    await Promise.all(swaps.map(([im]) => (im.complete ? 0 : new Promise((ok) => { im.onload = im.onerror = ok; }))));
+    const pages = [...$('prPages').querySelectorAll('.pt-page')], files = [];
+    const base = (S.route.spec?.name || 'route').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 40) || 'route';
+    for (let i = 0; i < pages.length; i++) {
+      btn.textContent = `Making image ${i + 1}/${pages.length}…`;
+      const c = await window.html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+      const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+      const label = pages[i].querySelector('.pt-head span')?.textContent.split('·')[0].trim().replace(/\s+/g, '-') || `page-${i + 1}`;
+      files.push(new File([blob], `${base}-${String(i + 1).padStart(2, '0')}-${label}.png`, { type: 'image/png' }));
+    }
+    $('prPages').style.setProperty('--k', k);
+    for (const [im, src, f, o] of swaps) { im.src = src; im.style.filter = f; im.style.opacity = o; }
+    try { // iPhone: the share sheet → Save Images / AirDrop / Messages
+      if (navigator.canShare?.({ files })) { await navigator.share({ files, title: S.route.spec?.name || 'Route' }); toast(`${files.length} image${files.length > 1 ? 's' : ''} ready`); return; }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    for (const f of files) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+    toast(`${files.length} PNG image${files.length > 1 ? 's' : ''} saved`);
+  } catch (err) { toast('Couldn’t make the images: ' + (err?.message || 'offline?')); }
+  finally { btn.disabled = false; btn.textContent = old; fitPreview(); }
+};

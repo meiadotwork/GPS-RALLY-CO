@@ -621,3 +621,14 @@ body.skin-term .fav-row button { border-radius: 0; border: 2px solid var(--t); c
 body.skin-term .link-btn { color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
 body.skin-term #reccePreview, body.skin-term #recceSheet .row { background: #000; }
 #routeSort { margin: 4px 0 8px; }
+
+/* QR code on printed sheets, PNG button */
+.pt-qr { background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; font: 700 9px system-ui, sans-serif; color: #000; }
+.pt-qr svg { width: 128px; height: 128px; display: block; }
+.pt-qr-map { position: absolute; right: 8px; top: 8px; padding: 6px; border: 1px solid #000; }
+.pt-dirtop { display: flex; gap: 14px; align-items: center; margin: 8px 0 4px; }
+.pt-sum { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; } .pt-sum b { font-size: 20px; }
+.pt-qr-dirs { flex: none; padding: 4px; border: 1px solid #000; }
+.pt-qr-dirs svg { width: 150px; height: 150px; }
+.pp-check { display: flex; align-items: center; gap: 8px; color: #fff; font: 600 14px system-ui, sans-serif; margin: 0; }
+#prPng { background: transparent; color: #fff; border: 2px solid #fff; border-radius: 10px; font: 800 15px system-ui, sans-serif; min-height: 46px; letter-spacing: 0; text-transform: none; }
