@@ -21,7 +21,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', gas: 'off', gasEff: 25, gasUnit: 'mpg', gasPrice: 3.5, gasCur: '$', routeSort: 'az', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', noteWarn: '150', gas: 'off', gasEff: 25, gasUnit: 'mpg', gasPrice: 3.5, gasCur: '$', routeSort: 'az', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
@@ -768,7 +768,10 @@ $('recceClear').onclick = () => {
 };
 
 $('btnRoute').onclick = () => {
-  if (S.nav && S.fix) return openRecce({ lat: S.fix.lat, lon: S.fix.lon }); // while driving: quick "+ note"
+  if (S.nav && S.fix) { // while driving: quick "+ note" — pinned a little behind you (you tap after you've seen or hit it)
+    const back = Math.max(10, Math.min(45, (S.speed || 0) * 1.5)), p = S.route && S.lastOnRouteS != null ? routePointAt(S.lastOnRouteS - back) : null;
+    return openRecce(p ? { lat: p[0], lon: p[1] } : { lat: S.fix.lat, lon: S.fix.lon });
+  }
   openSheet('routeSheet');
 };
 $('btnSettings').onclick = () => openSheet('settingsSheet');
@@ -847,7 +850,7 @@ $('setRate').oninput = (e) => { settings.rate = +e.target.value; $('rateVal').te
 $('setVoice').onchange = (e) => { settings.voice = e.target.value; saveSettings(); };
 $('btnTestVoice').onclick = () => speak('Left 5, 100, into right 3 tightens. Hairpin left, don\'t cut.', true);
 function applySettings() {
-  S.sched?.set({ callAhead: settings.callAhead, rate: settings.rate, units: settings.units, dists: settings.dists });
+  S.sched?.set({ callAhead: settings.callAhead, rate: settings.rate, units: settings.units, dists: settings.dists, noteWarn: +settings.noteWarn || 150 });
   $('speedUnit').textContent = settings.units === 'imperial' ? 'mph' : 'km/h';
   if (S.route) paintSummary();
 }
@@ -2571,3 +2574,14 @@ $('btnContinue').onclick = openContinue;
 $('nextPlaces').addEventListener('click', (e) => { const id = e.target.closest('button')?.dataset.place; const p = id && myPlaces().find((x) => x.id === id); if (p) continueTo({ place: p }); });
 $('nextRoutes').addEventListener('click', (e) => { const id = e.target.closest('button')?.dataset.route; const r = id && myRoutes().find((x) => x.id === id); if (r) continueTo({ route: r }); });
 $('nextMap').onclick = () => { $('nextSheet').hidden = true; S.mode = 'pickNext'; toast('Tap the map where the route should go next', 4000); };
+
+// a point on the current route at distance s (wraps round on a circuit)
+function routePointAt(s) {
+  const smp = S.route?.samples; if (!smp?.length) return null;
+  const L = smp.at(-1).s; if (S.route.loop) s = ((s % L) + L) % L; else s = Math.max(0, Math.min(L, s));
+  let i = 1; while (i < smp.length - 1 && smp[i].s < s) i++;
+  const a = smp[i - 1], b = smp[i], t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
+  return [a.lat + (b.lat - a.lat) * t, a.lon + (b.lon - a.lon) * t];
+}
+bindSeg('setNoteWarn', 'noteWarn');
+$('setNoteWarn').addEventListener('click', () => toast(`Your notes are called about ${fmtDist(+settings.noteWarn)} before the spot`));

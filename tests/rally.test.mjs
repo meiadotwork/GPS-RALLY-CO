@@ -685,3 +685,18 @@ test('a route with several destinations keeps its named stops in a share link', 
   const back = hashToSpec('#' + specToHash(spec, { name: 'Home → Gas station → Work' }));
   assert.equal(back.spec.stops.length, 1); assert.equal(back.spec.stops[0].name, 'Gas station'); assert.deepEqual(back.spec.stops[0].ll, [40.71, -73.98]);
 });
+
+test('your notes are called a set distance before the spot, not as you reach it', () => {
+  const c0 = [40.7, -73.99], P = (m) => offsetPoint(c0, 90, m);
+  const pts = [P(0), P(1500)];
+  const recce = [{ id: 'p1', lat: P(800)[0], lon: P(800)[1], words: ['pothole'] }];
+  const g = generatePaceNotes(pts, { recce, flats: false });
+  const pot = g.notes.find((n) => n.kind === 'recce');
+  for (const [warn, kmh] of [[150, 30], [250, 50], [400, 90]]) {
+    const sim = new DriveSim(g.samples, g.kappa, kmh / 3.6, { constant: true }), sch = new CallScheduler(g.notes, { noteWarn: String(warn) });
+    let calledAt = null;
+    while (!sim.done && calledAt == null) { const f = sim.tick(0.5); const c = sch.update(f.s, f.speed); if (c && /pothole/i.test(c.text)) calledAt = f.s; }
+    const before = pot.sApex - calledAt;
+    assert.ok(before >= warn - 5 && before <= Math.max(warn, kmh / 3.6 * 6 + 30) + 10, `${warn} m setting at ${kmh} km/h: called ${Math.round(before)} m before`);
+  }
+});

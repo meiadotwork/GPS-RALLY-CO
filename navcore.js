@@ -80,6 +80,8 @@ export function speechSeconds(text, rate = 1.3) {
   return words / (3 * rate) + 0.3 * (text.split(',').length - 1) / rate;
 }
 
+const isMine = (n) => n.kind === 'recce' || n.kind === 'camera' || !!n.recce?.length;
+
 export class CallScheduler {
   // opts.loopLength set -> notes repeat every lap; pass an unwrapped s that keeps growing.
   constructor(notes, opts = {}) {
@@ -137,7 +139,10 @@ export class CallScheduler {
     for (let k = i; k <= j; k++) chain.push(this.noteAt(k));
     const text = chainText(chain, 0, chain.length - 1, this.opts.units, { distances: this.opts.dists === 'on' });
     const dist = chain[0].sStart - s;
-    const trig = this.triggerDistance(text, v);
+    let trig = this.triggerDistance(text, v);
+    // your own notes (pothole, speed camera…) are called a set distance ahead, not just a few seconds:
+    // you can't see them coming the way you see a corner
+    if (isMine(chain[0])) trig = Math.max(trig, +this.opts.noteWarn || 150);
     if (dist > trig) return null;
     this.next = j + 1;
     return { from: i, to: j, text, triggerDist: Math.round(trig), distToNote: Math.round(dist) };

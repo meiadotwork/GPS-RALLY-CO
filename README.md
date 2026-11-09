@@ -307,6 +307,10 @@ The current end becomes a **named stop**. While driving you hear "Stop, Gas stat
 - **At the finish:** the results card shows **Gas spent**, worked out from the distance you actually drove, and the voice says it ("Gas, about 2 dollars 85").
 - Cars only: it's hidden for bike and on foot.
 
+## Your notes are called ahead of the spot
+
+A pothole or a camera can't be seen coming the way a corner can, so **your notes are called a set distance before the spot**: **Settings → Warn about your notes**, 100 / **150** (default) / 250 / 400 m. At high speed they come even earlier if the normal timing would be earlier. **＋ Note while driving pins the note a little behind you** (10–45 m depending on speed), because you tap after you've seen or hit it.
+
 ## ★ Favourite notes
 
 **＋ Note** opens with up to **4 big favourite buttons** on top. **One tap saves that note** where you are, with no scrolling, which is safer while driving. The defaults are speed camera, pothole, caution and bumps. **✎ Choose favourites** lets you tap words in the list to add or remove them (4 at most). For a combination ("caution, rocks inside"), use the full list below as before. Favourites are saved with your settings.
