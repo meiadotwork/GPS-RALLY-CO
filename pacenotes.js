@@ -500,7 +500,7 @@ export const RECCE_WORDS = {
   Hazard: ['caution', 'double caution', 'danger', 'care', 'maybe'],
   Camera: ['speed camera'],
   Line: ["don't cut", 'cut', 'cut late', 'keep left', 'keep middle', 'keep right', 'brake', 'hard brake'],
-  Road: ['crest', 'big crest', 'jump', 'big jump', 'dip', 'compression', 'bumps', 'bad bumps', 'narrows', 'widens', 'camber', 'off camber'],
+  Road: ['pothole', 'potholes', 'crest', 'big crest', 'jump', 'big jump', 'dip', 'compression', 'bumps', 'bad bumps', 'narrows', 'widens', 'camber', 'off camber'],
   Surface: ['slippy', 'loose', 'gravel', 'tarmac', 'mud', 'snow', 'ice', 'water', 'ford', 'ruts'],
   Roadside: ['rocks', 'stones', 'ditch', 'bank', 'wall', 'trees', 'logs', 'posts', 'drop', 'big drop', 'exposure', 'gate'],
   Feature: ['bridge', 'over bridge', 'tunnel', 'junction'],

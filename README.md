@@ -289,6 +289,14 @@ Two **RED** buttons on the right of the screen, **35** and **70** seconds by def
 - **−5 / +5** adjust it, **↻ 35 / ↻ 70** start again from either time, and **✕ Close** stops it.
 - **Settings:** set the seconds for each button (5–600), or hide the buttons.
 
+## ★ Favourite notes
+
+**＋ Note** opens with up to **4 big favourite buttons** on top. **One tap saves that note** where you are, with no scrolling, which is safer while driving. The defaults are speed camera, pothole, caution and bumps. **✎ Choose favourites** lets you tap words in the list to add or remove them (4 at most). For a combination ("caution, rocks inside"), use the full list below as before. Favourites are saved with your settings.
+
+## Backup includes your settings
+
+**Settings → Export backup** saves your places, routes, notes, fixes, leaderboard and ghosts, **plus all your settings**: voice speed and voice, look and Terminal colour, map colours, timers, units, call options and favourites. **Import** on a new phone restores everything and applies the settings straight away (the app reloads once).
+
 ## Distances in the calls
 
 By default the calls **don't say the distance to the next call** ("left 4, 200, right 3" becomes "left 4, right 3"). The short links "into", "and" and "then" are still said, because they tell you corners come close together. **Settings → Distance between calls → Say it** brings the numbers back.

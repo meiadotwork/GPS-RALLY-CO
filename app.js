@@ -20,7 +20,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
@@ -697,18 +697,47 @@ function openRecce(target) {
   recceTarget = target; recceWords = [];
   $('recceWhat').textContent = target.note ? `On: ${target.note.label}` : 'Here, at your current position';
   $('recceClear').hidden = !target.note?.recce;
+  favEdit = false; paintFavs();
   paintRecce(); openSheet('recceSheet');
 }
 $('recceChips').addEventListener('click', (e) => {
   const w = e.target.dataset?.w; if (!w) return;
+  if (favEdit) return toggleFav(w);
   recceWords = recceWords.includes(w) ? recceWords.filter((x) => x !== w) : [...recceWords, w];
   paintRecce();
 });
-$('recceSave').onclick = () => {
+// ★ favourites: up to 4 big buttons on top — one tap saves that note right away (no scrolling while driving)
+let favEdit = false;
+const favs = () => (Array.isArray(settings.recceFavs) ? settings.recceFavs : []).slice(0, 4);
+function paintFavs() {
+  const f = favs();
+  $('recceFavs').innerHTML = f.length ? f.map((w) => `<button data-fav="${w}">${favEdit ? '✕ ' : ''}${w}</button>`).join('')
+    : '<p class="fine">No favourites yet — tap ✎ and choose up to 4 words below.</p>';
+  $('recceFavEdit').textContent = favEdit ? '✓ Done choosing' : '✎ Choose favourites';
+  $('recceFavHint').hidden = !favEdit;
+  $('recceChips').classList.toggle('fav-editing', favEdit);
+  $('recceChips').querySelectorAll('button').forEach((b) => b.classList.toggle('fav', favEdit && f.includes(b.dataset.w)));
+}
+function toggleFav(w) {
+  const f = favs();
+  if (f.includes(w)) settings.recceFavs = f.filter((x) => x !== w);
+  else if (f.length >= 4) return toast('4 favourites at most — tap one on top to remove it first');
+  else settings.recceFavs = [...f, w];
+  saveSettings(); paintFavs();
+}
+$('recceFavs').addEventListener('click', (e) => {
+  const w = e.target.closest('button')?.dataset.fav; if (!w) return;
+  if (favEdit) return toggleFav(w);
+  recceWords = [w]; saveRecceNote(); // one tap: saved
+});
+$('recceFavEdit').onclick = () => { favEdit = !favEdit; paintFavs(); };
+function saveRecceNote() {
+  if (!recceWords.length || !recceTarget) return;
   recce.push({ id: Date.now().toString(36), lat: recceTarget.lat, lon: recceTarget.lon, words: recceWords.slice() });
   saveRecce(); $('recceSheet').hidden = true;
-  regen('Recce note added: ' + recceWords.join(', '));
-};
+  if (S.route) regen('Note added: ' + recceWords.join(', ')); else toast('Note added: ' + recceWords.join(', '));
+}
+$('recceSave').onclick = saveRecceNote;
 $('recceClear').onclick = () => {
   const ids = recceTarget.note?.recce || [];
   recce = recce.filter((r) => !ids.includes(r.id)); saveRecce();
@@ -1724,11 +1753,11 @@ async function exportBackup() {
   const name = `codriver-backup-${new Date().toISOString().slice(0, 10)}.json`;
   const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
   try { // iPhone: share sheet → Save to Files / AirDrop / Messages
-    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Co-Driver backup' }); toast(`Backup ready: ${plural(n, 'place')}, ${plural(r, 'route')}`); return; }
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Co-Driver backup' }); toast(`Backup ready: ${plural(n, 'place')}, ${plural(r, 'route')} and your settings`); return; }
   } catch (e) { if (e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast(`Backup saved: ${plural(n, 'place')}, ${plural(r, 'route')}`);
+  toast(`Backup saved: ${plural(n, 'place')}, ${plural(r, 'route')} and your settings`);
 }
 function mergeById(cur, add) { const ids = new Set(cur.map((x) => x.id)); return [...cur, ...(add || []).filter((x) => x && !ids.has(x.id))]; }
 function mergeFaster(cur, add, ms = (v) => v) { const out = { ...cur }; for (const [k, v] of Object.entries(add || {})) if (out[k] == null || ms(v) < ms(out[k])) out[k] = v; return out; }
@@ -1749,9 +1778,17 @@ async function importBackup(file) {
   try { for (const [k, v] of Object.entries(write)) localStorage.setItem(k, JSON.stringify(v)); }
   catch { return toast('Couldn’t import — this browser is blocking saved data (Private tab?)', 6000); }
   recce = write['codriver.recce']; fixes = write['codriver.fixes'];
-  drawPlaces(); paintPlaceChips(); paintCal(); if (S.route) regen();
   const added = myPlaces().length + myRoutes().length - before;
-  toast(`Backup imported: ${plural(write['codriver.places'].length, 'place')}, ${plural(write['codriver.routes'].length, 'route')} (${added} new)`);
+  const msg = `Backup imported: ${plural(write['codriver.places'].length, 'place')}, ${plural(write['codriver.routes'].length, 'route')} (${added} new)`;
+  // your settings come too (voice speed, look, timers, units, favourites…): saved, then a quick reload applies them all
+  const set = data['codriver.settings'];
+  if (set && typeof set === 'object') {
+    try { localStorage.setItem('codriver.settings', JSON.stringify({ ...settings, ...set })); sessionStorage.setItem('codriver.msg', msg + ' · your settings are applied'); } catch {}
+    if (S.nav) stopNav();
+    return location.reload();
+  }
+  drawPlaces(); paintPlaceChips(); paintCal(); if (S.route) regen();
+  toast(msg);
 }
 $('btnExport').onclick = exportBackup;
 $('btnImport').onclick = () => $('importFile').click();
@@ -2344,3 +2381,6 @@ $('prGo').onclick = async () => {
   window.print();
 };
 $('btnPrint').onclick = openPrint;
+
+// a message carried across a reload (e.g. after importing a backup with settings)
+try { const m = sessionStorage.getItem('codriver.msg'); if (m) { sessionStorage.removeItem('codriver.msg'); setTimeout(() => toast(m, 6000), 600); } } catch {}
