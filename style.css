@@ -632,3 +632,10 @@ body.skin-term #reccePreview, body.skin-term #recceSheet .row { background: #000
 .pt-qr-dirs svg { width: 150px; height: 150px; }
 .pp-check { display: flex; align-items: center; gap: 8px; color: #fff; font: 600 14px system-ui, sans-serif; margin: 0; }
 #prPng { background: transparent; color: #fff; border: 2px solid #fff; border-radius: 10px; font: 800 15px system-ui, sans-serif; min-height: 46px; letter-spacing: 0; text-transform: none; }
+
+/* ⛽ gas cost settings */
+#gasBox .seg { margin-top: 8px; }
+.gas-grid { display: grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px; }
+.gas-grid label { margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.gas-grid input { width: 100%; padding: 12px 8px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-weight: 800; font-variant-numeric: tabular-nums; }
+body.skin-term .gas-grid input { border: 2px solid var(--t); border-radius: 0; background: #000; }

@@ -288,6 +288,19 @@
     <button data-v="off">Off</button><button data-v="on">Guess them</button>
   </div>
   <p class="fine">Off by default: elevation data is too rough for real roads. Add your own road notes instead: <b>＋ Note</b> while driving (crest, jump, dip, bumps, gravel, narrows…), or in Review → ＋ Add at ⊕ → Words only. They’re called every time you pass.</p>
+  <label>⛽ Gas cost</label>
+  <div class="seg" id="setGas">
+    <button data-v="off">Off</button><button data-v="on">Show it</button>
+  </div>
+  <div id="gasBox" hidden>
+    <div class="seg" id="gasUnit"><button data-v="mpg">mpg</button><button data-v="kml">km/L</button><button data-v="l100">L/100 km</button></div>
+    <div class="gas-grid">
+      <label><span id="gasEffLabel">Miles per gallon</span><input id="gasEff" type="number" min="0.5" max="200" step="0.1" inputmode="decimal"></label>
+      <label><span id="gasPriceLabel">Gas price</span><input id="gasPrice" type="number" min="0" max="100" step="0.01" inputmode="decimal"></label>
+      <label><span>Currency</span><input id="gasCur" type="text" maxlength="3" autocomplete="off"></label>
+    </div>
+    <p class="fine">Routes show the estimated gas cost (circuits: for your number of laps). At the finish you see and hear what the drive actually cost, from the distance you really drove. Cars only.</p>
+  </div>
   <label>Red light timer</label>
   <div class="seg" id="setRed">
     <button data-v="on">Show buttons</button><button data-v="off">Hide</button>

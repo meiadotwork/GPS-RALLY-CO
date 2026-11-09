@@ -7,6 +7,7 @@ import { overpassQuery, buildGraph, planHunt } from './parking.js?v=20261107';
 import { finishRecording, simplifyTrack } from './record.js?v=20261107';
 import { addRun, removeRun, removeBoard, ranked, boardList, mergeBoards } from './board.js?v=20261107';
 import { renderPrint } from './print.js?v=20261108';
+import { fuelCost, fmtMoney, sayMoney } from './fuel.js?v=20261109';
 import { chooseSmoothest, detourVias, bestInsertIndex, distToPolyline, pickShortest, tollCount, smoothScore, smoothCandidates, exploreVias, tightCount, pointAlong, sharedFraction, roundCandidates } from './routing.js?v=20261107';
 
 const $ = (id) => document.getElementById(id);
@@ -20,7 +21,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', routeSort: 'az', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', gas: 'off', gasEff: 25, gasUnit: 'mpg', gasPrice: 3.5, gasCur: '$', routeSort: 'az', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
@@ -399,7 +400,10 @@ function paintSummary() {
     : [`~${fmtDur(routeSeconds())}`, `${R.notes.length} note${R.notes.length === 1 ? '' : 's'}`];
   paintLaps();
   if (cams) parts.push(`${cams} 📷`);
-  $('routeInfo').textContent = `${R.loop ? 'Circuit · ' : ''}${dist} · ${parts.join(' · ')} (${corners} corners)`;
+  const gasEst = gasFor(R.total * (R.loop ? Math.max(1, laps || 1) : 1), R);
+  if (gasEst) parts.push(`⛽ ~${fmtMoney(gasEst.cost, settings.gasCur)}`);
+  $('routeInfo').textContent = `${R.loop ? 'Circuit · ' : ''}${dist} · ${parts.filter((x) => !x.startsWith('⛽')).join(' · ')} (${corners} corners)`
+    + (gasEst ? ` · gas ≈ ${fmtMoney(gasEst.cost, settings.gasCur)} (${gasEst.amount.toFixed(gasEst.amount < 10 ? 2 : 1)} ${gasEst.unit}${R.loop && laps ? ` for ${laps} lap${laps > 1 ? 's' : ''}` : ''})` : '');
   const name = R.spec?.name || '';
   $('chipName').textContent = name || '✎ Name this route';
   $('chipName').classList.toggle('unnamed', !name);
@@ -1229,7 +1233,8 @@ function finishRace(res) {
   const place = sim ? null : recordRun(res);
   stopNav();
   const unit = settings.units === 'imperial' ? 'miles per hour' : 'kilometres per hour';
-  speak(`Finish! ${sayTime(res.ms)}. Average ${Math.round(kmh(res.avg))} ${unit}.${isPb && prev ? ' New personal best!' : ''}${sim ? ' Simulation, not recorded.' : ''}`);
+  const gasSaid = gasFor(res.dist, R);
+  speak(`Finish! ${sayTime(res.ms)}. Average ${Math.round(kmh(res.avg))} ${unit}.${gasSaid ? ` Gas, ${sayMoney(gasSaid.cost, settings.gasCur)}.` : ''}${isPb && prev ? ' New personal best!' : ''}${sim ? ' Simulation, not recorded.' : ''}`);
 
   $('resName').textContent = name || 'Unnamed stage';
   const p = routeSvgPath(R.loop ? [...R.points, R.points[0]] : R.points, 300, 170);
@@ -1251,6 +1256,8 @@ function finishRace(res) {
     R.loop ? ['Laps', `${res.laps.length}`] : ['Notes called', `${R.notes.length}`],
   ];
   if (res.best) cells.push(['Best lap', fmtRaceTime(res.best)]);
+  const gasUsed = gasFor(res.dist, R);
+  if (gasUsed) cells.push(['Gas spent', `${fmtMoney(gasUsed.cost, settings.gasCur)} · ${gasUsed.amount.toFixed(2)} ${gasUsed.unit}`]);
   if (R.loop && res.laps.length) cells.push(['Lap length', fmtDist(R.total)]);
   $('resGrid').innerHTML = cells.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
   $('resLaps').innerHTML = res.laps.map((ms, i) => `<li class="${ms === res.best ? 'best' : ''}"><span>Lap ${i + 1}</span><b>${fmtRaceTime(ms)}</b></li>`).join('');
@@ -2457,3 +2464,40 @@ $('prPng').onclick = async () => {
   } catch (err) { toast('Couldn’t make the images: ' + (err?.message || 'offline?')); }
   finally { btn.disabled = false; btn.textContent = old; fitPreview(); }
 };
+
+// ---------- ⛽ gas cost (Settings: on/off, efficiency, price) ----------
+// Only for cars. The route shows an estimate; the results card (and the voice) say what the drive actually cost.
+function gasFor(metres, route) {
+  if (settings.gas !== 'on' || (route?.spec?.vehicle && route.spec.vehicle !== 'car')) return null;
+  return fuelCost(metres, { eff: settings.gasEff, effUnit: settings.gasUnit, price: settings.gasPrice });
+}
+function paintGas() {
+  const on = settings.gas === 'on';
+  $('gasBox').hidden = !on;
+  $('gasEff').value = settings.gasEff; $('gasPrice').value = settings.gasPrice; $('gasCur').value = settings.gasCur;
+  $('gasUnit').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings.gasUnit));
+  $('gasEffLabel').textContent = { mpg: 'Miles per gallon (US)', kml: 'Kilometres per litre', l100: 'Litres per 100 km' }[settings.gasUnit];
+  $('gasPriceLabel').textContent = `Gas price per ${settings.gasUnit === 'mpg' ? 'gallon' : 'litre'}`;
+  if (S.route) paintSummary();
+}
+bindSeg('setGas', 'gas');
+$('setGas').addEventListener('click', () => {
+  if (settings.gas === 'on' && !settings.gasSetUp) { // sensible first values for where you are
+    Object.assign(settings, settings.units === 'imperial' ? { gasEff: 25, gasUnit: 'mpg', gasPrice: 3.5, gasCur: '$' } : { gasEff: 12, gasUnit: 'kml', gasPrice: 1.8, gasCur: settings.gasCur || '$' }, { gasSetUp: true });
+    saveSettings();
+  }
+  paintGas();
+});
+$('gasUnit').addEventListener('click', (e) => {
+  const v = e.target.closest('button')?.dataset.v; if (!v || v === settings.gasUnit) return;
+  // convert the efficiency so the car stays the same car
+  const kml = settings.gasUnit === 'mpg' ? settings.gasEff * 1.609344 / 3.785411784 : settings.gasUnit === 'l100' ? 100 / settings.gasEff : +settings.gasEff;
+  const eff = v === 'mpg' ? kml * 3.785411784 / 1.609344 : v === 'l100' ? 100 / kml : kml;
+  if (v === 'mpg' && settings.gasUnit !== 'mpg') settings.gasPrice = Math.round(settings.gasPrice * 3.785411784 * 100) / 100; // per litre → per gallon
+  if (v !== 'mpg' && settings.gasUnit === 'mpg') settings.gasPrice = Math.round(settings.gasPrice / 3.785411784 * 100) / 100;
+  settings.gasUnit = v; settings.gasEff = Math.round(eff * 10) / 10; saveSettings(); paintGas();
+});
+for (const [id, key, min, max] of [['gasEff', 'gasEff', 0.5, 200], ['gasPrice', 'gasPrice', 0, 100]])
+  $(id).onchange = (e) => { const v = Math.max(min, Math.min(max, +e.target.value || 0)); settings[key] = v; e.target.value = v; saveSettings(); paintGas(); };
+$('gasCur').onchange = (e) => { settings.gasCur = e.target.value.trim().slice(0, 3); saveSettings(); paintGas(); };
+paintGas();

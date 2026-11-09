@@ -666,3 +666,16 @@ test('GPS glitches: a position jump gives no crazy top speed and adds no distanc
   assert.ok(Math.abs(dist - 210) < 5, `distance ${dist}`);
   assert.ok(Math.abs(gpsStep(prev, fix(225, 16000, { speed: 2222 }), 16000, 15).v - 15) < 0.01); // an impossible device speed is ignored
 });
+
+import { fuelCost, fmtMoney, sayMoney } from '../fuel.js';
+test('gas cost: mpg, km/L and L/100 km agree; money is formatted and said', () => {
+  const a = fuelCost(160934.4, { eff: 25, effUnit: 'mpg', price: 3.5 });        // 100 miles at 25 mpg = 4 gal = $14
+  assert.ok(Math.abs(a.gallons - 4) < 1e-9 && Math.abs(a.cost - 14) < 1e-9 && a.unit === 'gal');
+  const b = fuelCost(100000, { eff: 12.5, effUnit: 'kml', price: 1.8 });         // 100 km at 12.5 km/L = 8 L
+  assert.ok(Math.abs(b.litres - 8) < 1e-9 && Math.abs(b.cost - 14.4) < 1e-9);
+  const c = fuelCost(100000, { eff: 8, effUnit: 'l100', price: 1.8 });           // the same car in L/100 km
+  assert.ok(Math.abs(c.litres - b.litres) < 1e-9);
+  assert.equal(fuelCost(1000, { eff: 0, price: 3 }), null);
+  assert.equal(fmtMoney(3.204, '$'), '$3.20'); assert.equal(fmtMoney(14.4, 'R$'), 'R$14.40');
+  assert.equal(sayMoney(2.85, '$'), 'about 2 dollars 85'); assert.equal(sayMoney(0.4, '$'), 'about 40 cents');
+});

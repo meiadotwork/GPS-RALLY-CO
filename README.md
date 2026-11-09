@@ -291,6 +291,13 @@ Two **RED** buttons on the right of the screen, **35** and **70** seconds by def
 - **−5 / +5** adjust it, **↻ 35 / ↻ 70** start again from either time, and **✕ Close** stops it.
 - **Settings:** set the seconds for each button (5–600), or hide the buttons.
 
+## ⛽ Gas cost
+
+**Settings → ⛽ Gas cost → Show it** (off by default). Enter your car's efficiency in **mpg**, **km/L** or **L/100 km**, the **gas price** (per gallon with mpg, per litre otherwise) and your currency symbol. Switching units converts the numbers, so it stays the same car and the same price. (`fuel.js`)
+- **On a route:** the route box shows "⛽ ~$0.29", and the route page shows "gas ≈ $0.29 (0.08 gal)". Circuits use your number of laps.
+- **At the finish:** the results card shows **Gas spent**, worked out from the distance you actually drove, and the voice says it ("Gas, about 2 dollars 85").
+- Cars only: it's hidden for bike and on foot.
+
 ## ★ Favourite notes
 
 **＋ Note** opens with up to **4 big favourite buttons** on top. **One tap saves that note** where you are, with no scrolling, which is safer while driving. The defaults are speed camera, pothole, caution and bumps. **✎ Choose favourites** lets you tap words in the list to add or remove them (4 at most). For a combination ("caution, rocks inside"), use the full list below as before. Favourites are saved with your settings.
