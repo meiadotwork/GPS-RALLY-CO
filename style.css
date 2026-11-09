@@ -620,3 +620,4 @@ tr.info .pt-t { font-weight: 400; font-style: italic; }
 body.skin-term .fav-row button { border-radius: 0; border: 2px solid var(--t); color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
 body.skin-term .link-btn { color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
 body.skin-term #reccePreview, body.skin-term #recceSheet .row { background: #000; }
+#routeSort { margin: 4px 0 8px; }

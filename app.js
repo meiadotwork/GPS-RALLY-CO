@@ -20,7 +20,7 @@ const ELEVATION = 'https://api.open-meteo.com/v1/elevation';
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=';
 
 // ---------- settings ----------
-const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
+const settings = { callAhead: 'normal', rate: 1.3, units: 'metric', voice: '', flats: 'on', scale: 'wrc', cams: 'off', crests: 'off', redTimer: 'on', redSecsA: 35, redSecsB: 70, streets: 'on', laps: 3, start: 'go', skin: 'term', termColor: '#ff3b30', mapColor: 'drive', routeSort: 'az', recceFavs: ['speed camera', 'pothole', 'caution', 'bumps'], dists: 'off', simKmh: 90, huntRadius: 400, huntMain: 'off', vehicle: 'car', labels: 'off', cal: '0', chain: 'single', smooth: 'on', noToll: false, round: 'on' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('codriver.settings') || '{}')); } catch {}
 if (settings.skin === 'arcade' || settings.skin === 'dots') settings.skin = 'term'; // retired skins → Terminal
 if (settings.redSecs && !settings.redSecsB) settings.redSecsB = settings.redSecs; // your old single timer becomes the second button
@@ -1410,7 +1410,10 @@ async function saveRoute() {
   toast(i >= 0 ? `“${name}” updated` : `“${name}” saved to My routes`);
 }
 function renderMyRoutes() {
-  const list = myRoutes();
+  // A–Z by default (numbers in names sort naturally: "Lap 2" before "Lap 10"); or newest first
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true });
+  const list = myRoutes().slice().sort(settings.routeSort === 'new' ? (a, b) => (b.savedAt || 0) - (a.savedAt || 0) : byName);
+  $('routeSort').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (settings.routeSort === 'new' ? 'new' : 'az')));
   $('myRoutesList').innerHTML = list.length ? list.map((r) => `
     <li data-id="${r.id}">
       <button class="mr-open"><b>${r.name.replace(/</g, '&lt;')}</b>
@@ -2384,3 +2387,5 @@ $('btnPrint').onclick = openPrint;
 
 // a message carried across a reload (e.g. after importing a backup with settings)
 try { const m = sessionStorage.getItem('codriver.msg'); if (m) { sessionStorage.removeItem('codriver.msg'); setTimeout(() => toast(m, 6000), 600); } } catch {}
+
+$('routeSort').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (!v) return; settings.routeSort = v; saveSettings(); renderMyRoutes(); });
