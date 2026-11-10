@@ -1020,6 +1020,17 @@ function onFix(f) {
     $('remain').textContent = S.liaison ? `${fmtDist(left)} to the start` : cp + (S.route.loop ? `${fmtDist(left)} to the line`
       : `${fmtDist(left)} to go · ETA ${eta.getHours()}:${String(eta.getMinutes()).padStart(2, '0')}`);
     glyph(up.note);
+    // progress bar: share of the whole route done (all laps on a circuit)
+    const R = S.race, lapFrac = S.route.loop ? (R?.lapStart != null ? 1 - left / L : 0) : 1 - left / L;
+    let pct = S.route.loop && R?.target ? (R.laps.length + lapFrac) / R.target : lapFrac;
+    if (R?.state === 'finished') pct = 1;
+    pct = Math.max(0, Math.min(1, pct || 0));
+    $('prog').firstChild.style.width = (pct * 100).toFixed(1) + '%';
+    $('prog').lastChild.textContent = Math.floor(pct * 100) + '%';
+    // ⛽ gas spent so far, live
+    const gas = !S.liaison && R ? gasFor(R.dist || 0, S.route) : null;
+    $('gasLive').hidden = !gas;
+    if (gas) $('gasLive').textContent = '⛽ ' + fmtMoney(gas.cost, settings.gasCur);
   }
   drawMe(f.lat, f.lon, S.heading);
   if (S.follow) followCam(f.lat, f.lon);

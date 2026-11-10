@@ -698,3 +698,16 @@ body.skin-term .place-chips button { padding: 6px 8px; font-size: 13px; letter-s
 #iconGrid button.on { border-color: var(--accent); background: rgba(255,255,255,.08); }
 body.skin-term #iconPreview, body.skin-term #iconGrid button.on { border-color: var(--t); border-radius: 0; }
 body.skin-term #iconInput { border: 2px solid var(--t); border-radius: 0; background: #000; }
+
+/* route progress bar (under the clock) and live gas spent */
+#prog { position: relative; height: 12px; margin-top: 8px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+#prog i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); transition: width .6s linear; }
+#prog span { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 9px; line-height: 1; color: var(--ink); mix-blend-mode: difference; }
+#gasLive { font-size: 14px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.skin-term #prog { border-radius: 0; border-color: var(--t-dim); }
+body.skin-term #prog i { background: var(--t); }
+body.skin-term #prog span { font-family: 'IBM VGA 8x16', 'Courier New', monospace; color: #fff; }
+body.skin-term #gasLive { color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; }
+body.map-full #notepanel #prog { display: none; }
+body.notemode #notepanel #prog { grid-column: 1 / 4; grid-row: 3; height: 6px; margin-top: 5px; }
+body.notemode #notepanel #prog span, body.notemode #notepanel #gasLive { display: none; }

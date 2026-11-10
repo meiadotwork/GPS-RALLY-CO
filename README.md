@@ -428,3 +428,8 @@ The place buttons on the Route sheet (and the 📍 My places list) are grouped b
 - Emoji you used only once share the last row, so the sheet stays short.
 
 To move a place into a group, give it that group's emoji (open the place and tap its icon).
+
+### Progress bar and live gas
+
+- **Progress bar:** a thin bar under the clock fills as you drive, with the percentage at its right end. It's the share of the route you've done (halfway = half full). On a circuit it counts all the laps. In note mode it sits under the slim bar, without the number.
+- **Live gas:** with ⛽ Gas cost on (Settings), the dollars you've spent so far count up next to "km to go" as you drive (cars only, not on the way to the start). The total matches the finish card.

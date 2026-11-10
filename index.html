@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap">
-<link rel="stylesheet" href="style.css?v=20261110b">
+<link rel="stylesheet" href="style.css?v=20261110c">
 </head>
 <body>
 <div id="mapwrap"><div id="map"></div></div>
@@ -28,7 +28,9 @@
     <div id="lapInfo" hidden></div>
     <div id="delta"></div>
     <div id="remain"></div>
+    <div id="gasLive" hidden></div>
   </div>
+  <div id="prog" title="How much of the route you've done"><i></i><span></span></div>
 </section>
 
 <button id="mapBack" class="pill go" hidden>↩ Back to driving</button>
@@ -453,6 +455,6 @@
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module" src="app.js?v=20261110b"></script>
+<script type="module" src="app.js?v=20261110c"></script>
 </body>
 </html>
