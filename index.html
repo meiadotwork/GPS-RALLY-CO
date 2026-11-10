@@ -44,6 +44,11 @@
     <button id="redCancel" class="pill ghost wide" title="Close the timer">✕ Close</button>
   </div>
 </div>
+<!-- note mode: 8 buttons, tapped as you pass the spot -->
+<div id="notePad" hidden>
+  <div class="pad-top"><b>NOTE MODE</b><button id="padMore" class="pill ghost">Full list…</button><button id="padEdit" class="pill ghost">✎ Edit buttons</button><button id="padDone" class="pill go">Done</button></div>
+  <div id="padGrid"></div>
+</div>
 <div id="toast" hidden></div>
 <div id="storeWarn" hidden>⚠ This browser isn’t keeping saved data (Private tab or “Block All Cookies”). Places and routes won’t be kept — open the app in a normal tab, or use Settings → Export backup. <b>✕</b></div>
 
@@ -393,6 +398,14 @@
   <h3 class="sub">My places</h3><ul id="nextPlaces" class="next-list"></ul>
   <h3 class="sub">My routes</h3><ul id="nextRoutes" class="next-list"></ul>
   <div class="row"><button id="nextMap" class="pill ghost">📍 Tap a spot on the map</button></div>
+</section>
+
+<!-- choosing what a note-mode button says -->
+<section id="slotSheet" class="sheet tall" hidden>
+  <header><h2 id="slotTitle">Button</h2><button class="close" data-close>✕</button></header>
+  <div id="slotPreview"></div>
+  <div id="slotChips"></div>
+  <div class="row"><button id="slotSave" class="pill go">Set this button</button><button id="slotClear" class="pill danger" hidden>Empty this button</button></div>
 </section>
 
 <!-- my places -->

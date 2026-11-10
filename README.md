@@ -311,6 +311,14 @@ The current end becomes a **named stop**. While driving you hear "Stop, Gas stat
 
 A pothole or a camera can't be seen coming the way a corner can, so **your notes are called a set distance before the spot**: **Settings → Warn about your notes**, 100 / **150** (default) / 250 / 400 m. At high speed they come even earlier if the normal timing would be earlier. **＋ Note while driving pins the note a little behind you** (10–45 m depending on speed), because you tap after you've seen or hit it.
 
+## 📝 Note mode (while driving)
+
+While driving, **＋ Note** switches to **note mode**: the map and calls carry on, and the bottom bar becomes **8 big buttons**.
+- **An empty button (＋):** tap it and pick any note from the list. It can be one word or several in order ("caution, rocks inside"). It stays on that button.
+- **A filled button:** tap it **as you pass the spot**. The note is saved right there (a little behind you, for reaction time), with a short double beep, and from then on it's called ahead of the spot (Settings → Warn about your notes). A quick double tap counts as one note.
+- **✎ Edit buttons** to change or empty any button. **Full list…** adds a one-off note. **Done** (or ✓ Notes) brings the normal bar back.
+- The 8 buttons start from your favourites and are saved with your settings, including in backups.
+
 ## ★ Favourite notes
 
 **＋ Note** opens with up to **4 big favourite buttons** on top. **One tap saves that note** where you are, with no scrolling, which is safer while driving. The defaults are speed camera, pothole, caution and bumps. **✎ Choose favourites** lets you tap words in the list to add or remove them (4 at most). For a combination ("caution, rocks inside"), use the full list below as before. Favourites are saved with your settings.

@@ -649,3 +649,21 @@ body.skin-term .next-list button { border: 2px solid var(--t-dim); border-radius
 body.mapc-track.nav:not(.map-full) .leaflet-tile-pane { opacity: 0 !important; }
 body.mapc-track.nav:not(.map-full) .leaflet-container, body.mapc-track.nav:not(.map-full) #mapwrap { background: #000 !important; }
 #setMapColor { flex-wrap: wrap; } #setMapColor button { min-width: 50%; }
+
+/* 📝 note mode: 8 big buttons instead of the bottom bar */
+#notePad { position: fixed; left: 8px; right: 8px; bottom: calc(10px + var(--safe-b)); z-index: 660; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 8px; }
+.pad-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; } .pad-top b { flex: 1; font-size: 13px; letter-spacing: 2px; color: var(--dim); }
+.pad-top .pill { min-height: 38px; padding: 6px 10px; font-size: 13px; }
+#padGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+#padGrid button { min-height: 74px; border-radius: 14px; border: 2px solid var(--accent); background: transparent; color: var(--ink); font: 800 14px/1.15 inherit; text-transform: uppercase; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; word-break: break-word; }
+#padGrid button.empty { border-style: dashed; border-color: var(--line); color: var(--dim); font-size: 30px; }
+#padGrid button:active { background: var(--accent); color: #000; }
+#padGrid button small { font-size: 9px; font-weight: 600; color: var(--dim); text-transform: none; }
+body.notemode #bar, body.notemode .timerBtn, body.notemode #attrib { display: none !important; }
+#slotPreview { padding: 10px 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: var(--accent); min-height: 1.4em; }
+body.skin-term #notePad { background: #000; border: 2px solid var(--t-dim); border-radius: 0; }
+body.skin-term #padGrid button { border-radius: 0; border-color: var(--t); color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
+body.skin-term #padGrid button.empty { border-color: var(--t-dim); color: var(--t-dim); }
+body.skin-term #padGrid button:active { background: var(--t); color: #000; }
+body.skin-term #slotPreview { color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
+body.notemode #toast { bottom: calc(250px + var(--safe-b)); pointer-events: none; }

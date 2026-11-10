@@ -768,10 +768,7 @@ $('recceClear').onclick = () => {
 };
 
 $('btnRoute').onclick = () => {
-  if (S.nav && S.fix) { // while driving: quick "+ note" — pinned a little behind you (you tap after you've seen or hit it)
-    const back = Math.max(10, Math.min(45, (S.speed || 0) * 1.5)), p = S.route && S.lastOnRouteS != null ? routePointAt(S.lastOnRouteS - back) : null;
-    return openRecce(p ? { lat: p[0], lon: p[1] } : { lat: S.fix.lat, lon: S.fix.lon });
-  }
+  if (S.nav) return toggleNoteMode(); // while driving: note mode (8 buttons to log what you pass)
   openSheet('routeSheet');
 };
 $('btnSettings').onclick = () => openSheet('settingsSheet');
@@ -1171,7 +1168,7 @@ function countdown(go) {
 function stopNav() {
   S.nav = false;
   if (S.liaison) { const m = S.liaison.main; S.liaison = null; S.liaisonLayer?.remove(); S.liaisonLayer = null; setRoute(m, { fit: false }); }
-  document.body.classList.remove('np-full', 'map-full'); $('mapBack').hidden = true;
+  document.body.classList.remove('np-full', 'map-full', 'notemode'); $('mapBack').hidden = true; $('notePad').hidden = true;
   S.ghostMarker?.remove(); S.ghostMarker = null;
   (S.cd || []).forEach(clearTimeout); S.cd = []; $('countdown').hidden = true;
   clearInterval(S.clockTimer); S.clockTimer = null;
@@ -2586,3 +2583,61 @@ function routePointAt(s) {
 }
 bindSeg('setNoteWarn', 'noteWarn');
 $('setNoteWarn').addEventListener('click', () => toast(`Your notes are called about ${fmtDist(+settings.noteWarn)} before the spot`));
+
+// ---------- 📝 note mode: 8 buttons you fill with any note, tapped as you pass the spot ----------
+const NSLOTS = 8;
+function slots() {
+  let a = Array.isArray(settings.noteSlots) ? settings.noteSlots.slice(0, NSLOTS) : null;
+  if (!a) a = favs().map((w) => [w]); // start from your favourites
+  while (a.length < NSLOTS) a.push(null);
+  return a;
+}
+let padEdit = false, slotIdx = -1, slotWords = [], lastTap = {};
+function toggleNoteMode(force) {
+  const on = force ?? !document.body.classList.contains('notemode');
+  document.body.classList.toggle('notemode', on); $('notePad').hidden = !on; padEdit = false;
+  $('btnRoute').textContent = on ? '✓ Notes' : '＋ Note';
+  if (on) { paintPad(); toast('Note mode: tap a button as you pass the spot', 2500); }
+}
+function paintPad() {
+  $('padGrid').innerHTML = slots().map((w, i) => `<button data-i="${i}" class="${w ? 'set' : 'empty'}">${w ? esc(w.join(', ')) : '＋'}${padEdit && w ? '<small>tap to change</small>' : ''}</button>`).join('');
+  $('padEdit').textContent = padEdit ? '✓ Done editing' : '✎ Edit buttons';
+  $('padGrid').classList.toggle('editing', padEdit);
+}
+function dropNote(words) { // right here (a little behind you: you tap as you pass it)
+  if (!S.fix) return toast('Waiting for GPS…');
+  const back = Math.max(10, Math.min(45, (S.speed || 0) * 1.5)), p = S.route && S.lastOnRouteS != null ? routePointAt(S.lastOnRouteS - back) : null;
+  const at = p || [S.fix.lat, S.fix.lon];
+  recce.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 4), lat: at[0], lon: at[1], words: words.slice() });
+  saveRecce(); beep(990, 0.08); setTimeout(() => beep(1320, 0.1), 110);
+  if (S.route) regen(); toast(`📍 ${words.join(', ')} — called ${fmtDist(+settings.noteWarn || 150)} before this spot`, 2200);
+}
+$('padGrid').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const i = +b.dataset.i, w = slots()[i];
+  if (!w || padEdit) return openSlot(i);
+  if (Date.now() - (lastTap[i] || 0) < 1500) return; // a double tap is one note
+  lastTap[i] = Date.now(); dropNote(w);
+});
+$('padEdit').onclick = () => { padEdit = !padEdit; paintPad(); };
+$('padDone').onclick = () => toggleNoteMode(false);
+$('padMore').onclick = () => { // a one-off note from the full list, at this spot
+  const back = Math.max(10, Math.min(45, (S.speed || 0) * 1.5)), p = S.route && S.lastOnRouteS != null ? routePointAt(S.lastOnRouteS - back) : null;
+  if (S.fix) openRecce(p ? { lat: p[0], lon: p[1] } : { lat: S.fix.lat, lon: S.fix.lon });
+};
+// choosing what a button says
+function openSlot(i) {
+  slotIdx = i; slotWords = (slots()[i] || []).slice();
+  $('slotChips').innerHTML = Object.entries(RECCE_WORDS).map(([cat, words]) => `<h3>${cat}</h3><div class="chips">${words.map((w) => `<button data-w="${w}">${w}</button>`).join('')}</div>`).join('');
+  $('slotTitle').textContent = `Button ${i + 1}`;
+  paintSlot(); openSheet('slotSheet');
+}
+function paintSlot() {
+  $('slotChips').querySelectorAll('button').forEach((b) => b.classList.toggle('on', slotWords.includes(b.dataset.w)));
+  $('slotPreview').textContent = slotWords.length ? slotWords.join(', ') : 'Tap a word (or several, in the order to say them)';
+  $('slotSave').disabled = !slotWords.length; $('slotClear').hidden = !slots()[slotIdx];
+}
+$('slotChips').addEventListener('click', (e) => { const w = e.target.dataset?.w; if (!w) return; slotWords = slotWords.includes(w) ? slotWords.filter((x) => x !== w) : [...slotWords, w]; paintSlot(); });
+function setSlot(v) { const a = slots(); a[slotIdx] = v; settings.noteSlots = a; saveSettings(); $('slotSheet').hidden = true; paintPad(); }
+$('slotSave').onclick = () => setSlot(slotWords.slice());
+$('slotClear').onclick = () => setSlot(null);
