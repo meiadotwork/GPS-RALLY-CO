@@ -1507,17 +1507,31 @@ function drawPlaces() {
     icon: L.divIcon({ className: 'place-pin', html: p.icon, iconSize: [30, 30] }), zIndexOffset: 500,
   }).on('click', (e) => { if (S.nav || S.mode === 'edit') return; L.DomEvent.stopPropagation(e); openPlace(p.id); }))).addTo(map);
 }
+// Places grouped by emoji: Home and Work first, then the biggest groups (all 🍔 together, all 🌳 together…),
+// A–Z inside each group. Emoji you used only once share one last row so the sheet stays short.
+// Used by the Route sheet chips and by 📍 My places.
+const isHome = (p) => p.icon === '🏠' || /^home$/i.test(p.name.trim());
+const isWork = (p) => p.icon === '💼' || /^work$/i.test(p.name.trim());
+function placeGroups() {
+  const all = myPlaces(), byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  const top = [...all.filter(isHome), ...all.filter((p) => !isHome(p) && isWork(p))];
+  const groups = new Map();
+  all.filter((p) => !top.includes(p)).forEach((p, i) => { const k = p.icon || '📍'; if (!groups.has(k)) groups.set(k, { icon: k, first: i, list: [] }); groups.get(k).list.push(p); });
+  const sorted = [...groups.values()].sort((a, b) => b.list.length - a.list.length || a.first - b.first);
+  const rows = sorted.filter((g) => g.list.length > 1).map((g) => g.list.sort(byName));
+  const singles = sorted.filter((g) => g.list.length === 1).map((g) => g.list[0]);
+  return [top, ...rows, singles].filter((r) => r.length);
+}
 function paintPlaceChips() {
-  // every place you saved (no limit); home and work first, the rest in your order
-  const rank = (p) => (p.icon === '🏠' ? 0 : p.icon === '💼' ? 1 : 2);
-  const list = myPlaces().map((p, i) => [p, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([p]) => p);
-  $('placeChips').innerHTML = list.map((p) => `<button data-id="${p.id}">${p.icon} ${p.name.replace(/</g, '&lt;')}</button>`).join('');
-  $('placeChips').hidden = !list.length;
+  // every place you saved (no limit); one row per emoji
+  const rows = placeGroups();
+  $('placeChips').innerHTML = rows.map((r) => `<div class="chip-row">${r.map((p) => `<button data-id="${p.id}">${p.icon} ${p.name.replace(/</g, '&lt;')}</button>`).join('')}</div>`).join('');
+  $('placeChips').hidden = !rows.length;
 }
 $('placeChips').addEventListener('click', (e) => { const id = e.target.closest('button')?.dataset.id; if (id) openPlace(id); });
 const distFromMe = (p) => (S.fix ? fmtDist(segLen([S.fix.lat, S.fix.lon], [p.lat, p.lon])) + ' away' : '');
 function renderPlaces() {
-  const list = myPlaces();
+  const list = placeGroups().flat();
   $('placesList').innerHTML = list.length ? list.map((p) => `
     <li data-id="${p.id}"><button class="mr-open"><b>${p.icon} ${p.name.replace(/</g, '&lt;')}</b><small>${distFromMe(p)}</small></button></li>`).join('')
     : '<li class="empty">No places yet. Save where you are, long-press the map, or tap 📍 on a search result.</li>';

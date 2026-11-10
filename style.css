@@ -669,7 +669,9 @@ body.skin-term #slotPreview { color: var(--t); font-family: 'IBM VGA 8x16', 'Cou
 body.notemode #toast { bottom: calc(250px + var(--safe-b)); pointer-events: none; }
 
 /* place shortcuts on the Route sheet: all of them, compact so many fit */
-.place-chips { gap: 5px; }
+.place-chips { gap: 5px; flex-direction: column; }
+.place-chips .chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.place-chips .chip-row + .chip-row { padding-top: 5px; border-top: 1px dashed var(--line); }
 .place-chips button { padding: 7px 10px; font-size: 14px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.skin-term .place-chips button { padding: 6px 8px; font-size: 13px; letter-spacing: 0; }
 

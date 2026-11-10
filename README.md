@@ -418,3 +418,13 @@ The public OSRM and Nominatim servers are demo services with fair-use limits. Fo
 ## Place icons
 
 **📍 My places → a place → Change icon** opens a picker: tap one of 72 common emoji, or type **any emoji** from your phone's keyboard (😀 / 🌐 key). Combined emoji like 👨‍👩‍👧 and flags like 🇧🇷 work too. Places with 🏠 and 💼 are listed first on the Route sheet.
+
+### Places sorted by emoji
+
+The place buttons on the Route sheet (and the 📍 My places list) are grouped by emoji:
+
+- **Home** comes first (🏠, or any place named "Home"), then **Work** (💼, or a place named "Work").
+- Each emoji you used more than once gets its own row, biggest group first. For example, all 🍔 places on one row and all 🌳 places on the next. Inside a row, places are A–Z.
+- Emoji you used only once share the last row, so the sheet stays short.
+
+To move a place into a group, give it that group's emoji (open the place and tap its icon).
