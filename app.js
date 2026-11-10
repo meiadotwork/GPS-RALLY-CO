@@ -1508,7 +1508,9 @@ function drawPlaces() {
   }).on('click', (e) => { if (S.nav || S.mode === 'edit') return; L.DomEvent.stopPropagation(e); openPlace(p.id); }))).addTo(map);
 }
 function paintPlaceChips() {
-  const list = myPlaces().slice(0, 6);
+  // every place you saved (no limit); home and work first, the rest in your order
+  const rank = (p) => (p.icon === '🏠' ? 0 : p.icon === '💼' ? 1 : 2);
+  const list = myPlaces().map((p, i) => [p, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([p]) => p);
   $('placeChips').innerHTML = list.map((p) => `<button data-id="${p.id}">${p.icon} ${p.name.replace(/</g, '&lt;')}</button>`).join('');
   $('placeChips').hidden = !list.length;
 }

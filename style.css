@@ -667,3 +667,8 @@ body.skin-term #padGrid button.empty { border-color: var(--t-dim); color: var(--
 body.skin-term #padGrid button:active { background: var(--t); color: #000; }
 body.skin-term #slotPreview { color: var(--t); font-family: 'IBM VGA 8x16', 'Courier New', monospace; font-weight: 400; }
 body.notemode #toast { bottom: calc(250px + var(--safe-b)); pointer-events: none; }
+
+/* place shortcuts on the Route sheet: all of them, compact so many fit */
+.place-chips { gap: 5px; }
+.place-chips button { padding: 7px 10px; font-size: 14px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.skin-term .place-chips button { padding: 6px 8px; font-size: 13px; letter-spacing: 0; }
