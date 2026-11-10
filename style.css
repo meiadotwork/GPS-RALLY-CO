@@ -672,3 +672,14 @@ body.notemode #toast { bottom: calc(250px + var(--safe-b)); pointer-events: none
 .place-chips { gap: 5px; }
 .place-chips button { padding: 7px 10px; font-size: 14px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.skin-term .place-chips button { padding: 6px 8px; font-size: 13px; letter-spacing: 0; }
+
+/* place icon picker */
+.icon-top { display: flex; align-items: center; gap: 14px; margin: 4px 0 10px; }
+#iconPreview { font-size: 56px; line-height: 1; width: 72px; height: 72px; display: grid; place-items: center; border: 2px solid var(--accent); border-radius: 16px; flex: none; }
+.icon-any { flex: 1; display: flex; flex-direction: column; gap: 6px; margin: 0; font-size: 13px; color: var(--dim); }
+#iconInput { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #0d0f12; font-size: 22px; }
+#iconGrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+#iconGrid button { aspect-ratio: 1; font-size: 24px; border: 1px solid transparent; background: transparent; border-radius: 10px; padding: 0; }
+#iconGrid button.on { border-color: var(--accent); background: rgba(255,255,255,.08); }
+body.skin-term #iconPreview, body.skin-term #iconGrid button.on { border-color: var(--t); border-radius: 0; }
+body.skin-term #iconInput { border: 2px solid var(--t); border-radius: 0; background: #000; }

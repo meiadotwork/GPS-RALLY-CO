@@ -1565,9 +1565,27 @@ $('plRename').onclick = async () => {
   const list = myPlaces(), p = list.find((x) => x.id === curPlace.id);
   p.name = v.trim().slice(0, 60); putPlaces(list); openPlace(p.id);
 };
+// icon: any emoji — tap one from the grid, or type any from the phone's emoji keyboard
+const ICON_GRID = ['🏠', '💼', '⭐', '❤️', '🍴', '☕', '🍕', '🍔', '🌮', '🍣', '🍺', '🍷', '🛒', '🏪', '⛽', '🔌', '🅿️', '🚗', '🏍️', '🚲', '🚶', '🏁', '🏎️', '🔧',
+  '🏋️', '⚽', '🏀', '🎾', '🏊', '🧘', '🏥', '💊', '🦷', '💈', '💇', '🎓', '📚', '🏫', '🏛️', '⛪', '🕌', '🕍', '🎨', '🖌️', '✒️', '🎵', '🎬', '🎮',
+  '🌳', '🌸', '🏖️', '⛰️', '🏕️', '🌊', '✈️', '🚉', '🚌', '⚓', '🏦', '🏨', '🐶', '🐱', '👶', '👵', '🎁', '💡', '📍', '🔥', '💀', '👑', '💎', '🚩'];
+const firstGrapheme = (t) => { const v = String(t || '').trim(); if (!v) return ''; try { return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(v)][0].segment; } catch { return [...v][0]; } };
+let iconPick = '';
 $('plIcon').onclick = () => {
-  const list = myPlaces(), p = list.find((x) => x.id === curPlace.id);
-  p.icon = PLACE_ICONS[(PLACE_ICONS.indexOf(p.icon) + 1) % PLACE_ICONS.length]; putPlaces(list); openPlace(p.id);
+  const p = myPlaces().find((x) => x.id === curPlace.id); if (!p) return;
+  iconPick = p.icon || '📍';
+  $('iconGrid').innerHTML = ICON_GRID.map((e) => `<button data-e="${e}">${e}</button>`).join('');
+  $('iconInput').value = ''; paintIconPick(); openSheet('iconSheet');
+};
+function paintIconPick() {
+  $('iconPreview').textContent = iconPick;
+  $('iconGrid').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.e === iconPick));
+}
+$('iconGrid').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.e; if (v) { iconPick = v; $('iconInput').value = ''; paintIconPick(); } });
+$('iconInput').addEventListener('input', (e) => { const g = firstGrapheme(e.target.value); if (g) { iconPick = g; paintIconPick(); } });
+$('iconSave').onclick = () => {
+  const list = myPlaces(), p = list.find((x) => x.id === curPlace.id); if (!p || !iconPick) return;
+  p.icon = iconPick; putPlaces(list); $('iconSheet').hidden = true; drawPlaces(); paintPlaceChips(); openPlace(p.id); toast(`Icon set: ${iconPick}`);
 };
 $('plDelete').onclick = () => {
   if (!confirm(`Delete “${curPlace.name}”?`)) return;

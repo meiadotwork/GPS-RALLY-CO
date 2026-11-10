@@ -414,3 +414,7 @@ The public OSRM and Nominatim servers are demo services with fair-use limits. Fo
 ## Always the newest version
 
 `_headers` tells browsers to check for a newer copy of every file on each visit (`Cache-Control: no-cache`, answered quickly with "not modified" when nothing changed), so a phone never keeps showing an old version after a deploy.
+
+## Place icons
+
+**📍 My places → a place → Change icon** opens a picker: tap one of 72 common emoji, or type **any emoji** from your phone's keyboard (😀 / 🌐 key). Combined emoji like 👨‍👩‍👧 and flags like 🇧🇷 work too. Places with 🏠 and 💼 are listed first on the Route sheet.
