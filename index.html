@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap">
-<link rel="stylesheet" href="style.css?v=20261110">
+<link rel="stylesheet" href="style.css?v=20261110b">
 </head>
 <body>
 <div id="mapwrap"><div id="map"></div></div>
@@ -44,9 +44,9 @@
     <button id="redCancel" class="pill ghost wide" title="Close the timer">✕ Close</button>
   </div>
 </div>
-<!-- note mode: 8 buttons, tapped as you pass the spot -->
+<!-- note mode: 18 buttons fill the screen under a slim direction bar; tapped as you pass the spot -->
 <div id="notePad" hidden>
-  <div class="pad-top"><b>NOTE MODE</b><button id="padMore" class="pill ghost">Full list…</button><button id="padEdit" class="pill ghost">✎ Edit buttons</button><button id="padDone" class="pill go">Done</button></div>
+  <div class="pad-top"><button id="padMore" class="pill ghost">Full list…</button><button id="padEdit" class="pill ghost">✎ Edit</button><button id="padFix" class="pill ghost">✎ Fix</button><button id="padDone" class="pill go">Done</button></div>
   <div id="padGrid"></div>
 </div>
 <div id="toast" hidden></div>
@@ -453,6 +453,6 @@
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module" src="app.js?v=20261110"></script>
+<script type="module" src="app.js?v=20261110b"></script>
 </body>
 </html>

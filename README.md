@@ -313,11 +313,11 @@ A pothole or a camera can't be seen coming the way a corner can, so **your notes
 
 ## 📝 Note mode (while driving)
 
-While driving, **＋ Note** switches to **note mode**: the map and calls carry on, and the bottom bar becomes **8 big buttons**.
+While driving, **＋ Note** switches to **note mode**: the map steps aside, and the calls shrink to one slim bar at the top (arrow, call, distance, then the next call, clock, km to go and ETA). The rest of the screen is **18 buttons** (3 across, 6 down), with **Full list…**, **✎ Edit**, **✎ Fix** and **Done** above them.
 - **An empty button (＋):** tap it and pick any note from the list. It can be one word or several in order ("caution, rocks inside"). It stays on that button.
 - **A filled button:** tap it **as you pass the spot**. The note is saved right there (a little behind you, for reaction time), with a short double beep, and from then on it's called ahead of the spot (Settings → Warn about your notes). A quick double tap counts as one note.
 - **✎ Edit buttons** to change or empty any button. **Full list…** adds a one-off note. **Done** (or ✓ Notes) brings the normal bar back.
-- The 8 buttons start from your favourites and are saved with your settings, including in backups.
+- The 18 buttons start from your favourites and are saved with your settings, including in backups.
 
 ## ★ Favourite notes
 

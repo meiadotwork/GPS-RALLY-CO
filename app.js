@@ -2113,7 +2113,7 @@ $('recDiscard').onclick = () => stopRec(false);
 
 // ---------- full screen while driving: tap the call → just the call; tap the map → just the map ----------
 $('notepanel').addEventListener('click', () => {
-  if (!S.nav) return;
+  if (!S.nav || document.body.classList.contains('notemode')) return; // note mode keeps the slim bar
   if (document.body.classList.contains('map-full')) return exitMapFull(); // the strip at the top takes you back
   document.body.classList.toggle('np-full');
 });
@@ -2618,8 +2618,8 @@ function routePointAt(s) {
 bindSeg('setNoteWarn', 'noteWarn');
 $('setNoteWarn').addEventListener('click', () => toast(`Your notes are called about ${fmtDist(+settings.noteWarn)} before the spot`));
 
-// ---------- 📝 note mode: 8 buttons you fill with any note, tapped as you pass the spot ----------
-const NSLOTS = 8;
+// ---------- 📝 note mode: 18 buttons you fill with any note, tapped as you pass the spot ----------
+const NSLOTS = 18;
 function slots() {
   let a = Array.isArray(settings.noteSlots) ? settings.noteSlots.slice(0, NSLOTS) : null;
   if (!a) a = favs().map((w) => [w]); // start from your favourites
@@ -2631,11 +2631,19 @@ function toggleNoteMode(force) {
   const on = force ?? !document.body.classList.contains('notemode');
   document.body.classList.toggle('notemode', on); $('notePad').hidden = !on; padEdit = false;
   $('btnRoute').textContent = on ? '✓ Notes' : '＋ Note';
-  if (on) { paintPad(); toast('Note mode: tap a button as you pass the spot', 2500); }
+  document.body.classList.remove('np-full');
+  if (on) { paintPad(); padFit(); toast('Note mode: tap a button as you pass the spot', 2500); }
 }
+// the button grid fills everything under the slim direction bar
+function padFit() {
+  if (!document.body.classList.contains('notemode')) return;
+  const r = $('notepanel').getBoundingClientRect();
+  $('notePad').style.top = ($('notepanel').hidden ? 8 : Math.round(r.bottom + 6)) + 'px';
+}
+new ResizeObserver(padFit).observe($('notepanel')); addEventListener('resize', padFit);
 function paintPad() {
   $('padGrid').innerHTML = slots().map((w, i) => `<button data-i="${i}" class="${w ? 'set' : 'empty'}">${w ? esc(w.join(', ')) : '＋'}${padEdit && w ? '<small>tap to change</small>' : ''}</button>`).join('');
-  $('padEdit').textContent = padEdit ? '✓ Done editing' : '✎ Edit buttons';
+  $('padEdit').textContent = padEdit ? '✓ Editing' : '✎ Edit';
   $('padGrid').classList.toggle('editing', padEdit);
 }
 function dropNote(words) { // right here (a little behind you: you tap as you pass it)
@@ -2655,6 +2663,7 @@ $('padGrid').addEventListener('click', (e) => {
 });
 $('padEdit').onclick = () => { padEdit = !padEdit; paintPad(); };
 $('padDone').onclick = () => toggleNoteMode(false);
+$('padFix').onclick = () => fixLast();
 $('padMore').onclick = () => { // a one-off note from the full list, at this spot
   const back = Math.max(10, Math.min(45, (S.speed || 0) * 1.5)), p = S.route && S.lastOnRouteS != null ? routePointAt(S.lastOnRouteS - back) : null;
   if (S.fix) openRecce(p ? { lat: p[0], lon: p[1] } : { lat: S.fix.lat, lon: S.fix.lon });
